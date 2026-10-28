@@ -152,6 +152,28 @@ void main() {
     expect(k.upcomingMeals.map((m) => m.name), ['Neu']);
   });
 
+  test('the list can be narrowed down to one meal', () {
+    final k = withPlan(week);
+    final list = k.shoppingList(monday);
+    final scramble = k.state.meals.firstWhere((m) => m.name == 'Rührei');
+    final narrowed = list.forMeal(scramble);
+    expect(narrowed.open.map((i) => i.key), unorderedEquals(['egg', 'milk']));
+    expect(narrowed.meal, scramble);
+    expect(narrowed.alreadyHome, 0);
+
+    k.check('milk', monday, now);
+    final after = k.shoppingList(monday).forMeal(scramble);
+    expect(after.open.map((i) => i.key), ['egg']);
+    expect(after.checked.map((i) => i.key), ['milk']);
+
+    k.finishTrip();
+    expect(k.shoppingList(monday).forMeal(scramble).alreadyHome, 1);
+
+    // Only meals inside the shopping window are offered.
+    k.state.shoppingDays = 2;
+    expect(k.mealsInWindow(monday).map((m) => m.name), ['Rührei', 'Oats']);
+  });
+
   test('state survives a JSON round trip', () {
     final k = withPlan(week);
     k.check('egg', monday, now);

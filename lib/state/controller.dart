@@ -50,6 +50,25 @@ class AppController extends ChangeNotifier {
   Day get today => Day.today(now);
 
   ShoppingList get shoppingList => kaufi.shoppingList(today);
+
+  /// The meal the shopping list is narrowed down to. Not persisted: opening
+  /// the app fresh always shows everything.
+  String? _mealFilter;
+
+  Meal? get filteredMeal {
+    final id = _mealFilter;
+    if (id == null) return null;
+    for (final m in kaufi.mealsInWindow(today)) {
+      if (m.id == id) return m;
+    }
+    return null;
+  }
+
+  void setMealFilter(String? mealId) {
+    if (_mealFilter == mealId) return;
+    _mealFilter = mealId;
+    notifyListeners();
+  }
   bool get hasPlan => kaufi.upcomingMeals.isNotEmpty;
 
   void _changed() {

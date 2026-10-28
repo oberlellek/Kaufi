@@ -4,10 +4,13 @@ import 'package:flutter/services.dart';
 import '../core/day.dart';
 import '../core/units.dart';
 import '../logic/kaufi.dart';
+import '../model/app_state.dart';
 import 'amount_sheet.dart';
 import 'app.dart';
 import 'import_flow.dart';
+import 'meal_dial.dart';
 import 'menu_sheet.dart';
+import 'swipe_row.dart';
 
 String formatEuro(double v) => v.round().toString();
 
@@ -22,7 +25,9 @@ class ShoppingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = KaufiScope.of(context);
-    final list = c.shoppingList;
+    final full = c.shoppingList;
+    final meal = c.filteredMeal;
+    final list = meal == null ? full : full.forMeal(meal);
     final theme = Theme.of(context);
 
     Widget body;
@@ -31,12 +36,18 @@ class ShoppingScreen extends StatelessWidget {
     } else {
       body = CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _Header(list: list)),
+          SliverToBoxAdapter(child: _Header(list: full)),
+          if (meal != null) SliverToBoxAdapter(child: _MealBanner(list: list)),
           if (list.open.isEmpty)
-            SliverToBoxAdapter(child: _AllThere(days: c.state.shoppingDays, anyChecked: list.checked.isNotEmpty)),
+            SliverToBoxAdapter(
+              child: meal == null
+                  ? _AllThere(days: c.state.shoppingDays, anyChecked: list.checked.isNotEmpty)
+                  : const _MealComplete(),
+            ),
           SliverList.builder(
             itemCount: list.open.length,
-            itemBuilder: (context, i) => _OpenRow(item: list.open[i]),
+            itemBuilder: (context, i) =>
+                _OpenRow(key: ValueKey('open-${list.open[i].key}'), item: list.open[i], meal: meal),
           ),
           if (list.checked.isNotEmpty)
             SliverToBoxAdapter(
@@ -50,13 +61,14 @@ class ShoppingScreen extends StatelessWidget {
             itemCount: list.checked.length,
             itemBuilder: (context, i) => _CheckedRow(item: list.checked[list.checked.length - 1 - i]),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(child: SizedBox(height: 96)),
         ],
       );
     }
 
     return Scaffold(
       body: SafeArea(bottom: false, child: body),
+      floatingActionButton: c.kaufi.mealsInWindow(c.today).isEmpty ? null : const MealDialButton(),
       bottomNavigationBar: const _BottomBar(),
     );
   }
@@ -95,10 +107,86 @@ class _Header extends StatelessWidget {
   }
 }
 
+class _MealBanner extends StatelessWidget {
+  const _MealBanner({required this.list});
+
+  final ShoppingList list;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KaufiScope.read(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final meal = list.meal!;
+    final home = list.alreadyHome;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: Material(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
+          child: Row(
+            children: [
+              Icon(Icons.restaurant, color: scheme.onSecondaryContainer),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(meal.name,
+                        style: theme.textTheme.titleMedium?.copyWith(color: scheme.onSecondaryContainer)),
+                    Text(
+                      [
+                        formatDayRelative(meal.day, c.today),
+                        if (home > 0) '$home ${home == 1 ? 'Zutat ist' : 'Zutaten sind'} schon da',
+                      ].join(' · '),
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSecondaryContainer),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Filter aus',
+                onPressed: () => c.setMealFilter(null),
+                icon: Icon(Icons.close, color: scheme.onSecondaryContainer),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MealComplete extends StatelessWidget {
+  const _MealComplete();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      child: Row(
+        children: [
+          Icon(Icons.task_alt, color: theme.colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('Für dieses Gericht ist alles da.', style: theme.textTheme.titleMedium),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OpenRow extends StatelessWidget {
-  const _OpenRow({required this.item});
+  const _OpenRow({super.key, required this.item, this.meal});
 
   final ShoppingItem item;
+
+  /// The meal the list is filtered to, if any.
+  final Meal? meal;
 
   @override
   Widget build(BuildContext context) {
@@ -106,40 +194,46 @@ class _OpenRow extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final unit = item.def.unit;
+    final forMeal = meal?.needs.where((n) => n.key == item.key).firstOrNull;
+    final others = [for (final u in item.usedIn) if (u != meal?.displayName) u];
     final detail = [
       if (item.atHome > 0) '${formatAmount(item.atHome, unit)} zu Hause',
-      if (item.usedIn.isNotEmpty) 'für ${item.usedIn.join(', ')}',
+      if (forMeal != null) 'hier ${formatAmount(forMeal.amount, unit)}',
+      if (forMeal != null && others.isNotEmpty) 'auch für ${others.join(', ')}',
+      if (forMeal == null && item.usedIn.isNotEmpty) 'für ${item.usedIn.join(', ')}',
     ].join(' · ');
 
-    return Dismissible(
-      key: ValueKey('open-${item.key}'),
-      background: _SwipeBackground(
+    return SwipeRow(
+      rightBackground: _SwipeBackground(
         color: scheme.primaryContainer,
         onColor: scheme.onPrimaryContainer,
         icon: Icons.shopping_basket_outlined,
         label: 'In den Korb',
         alignment: Alignment.centerLeft,
       ),
-      secondaryBackground: _SwipeBackground(
+      leftBackground: _SwipeBackground(
         color: scheme.tertiaryContainer,
         onColor: scheme.onTertiaryContainer,
         icon: Icons.home_outlined,
         label: 'Hab ich schon',
         alignment: Alignment.centerRight,
       ),
-      onDismissed: (direction) {
+      onSwipeRight: () {
         HapticFeedback.lightImpact();
-        if (direction == DismissDirection.startToEnd) {
-          c.check(item.key);
-        } else {
-          final added = c.markAtHome(item.key);
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.hideCurrentSnackBar();
-          messenger.showSnackBar(SnackBar(
-            content: Text('${item.def.name}: als vorrätig gemerkt'),
-            action: SnackBarAction(label: 'Rückgängig', onPressed: () => c.undoMarkAtHome(item.key, added)),
-          ));
-        }
+        c.check(item.key);
+      },
+      onSwipeLeft: () {
+        HapticFeedback.lightImpact();
+        final added = c.markAtHome(item.key);
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(SnackBar(
+          content: Text('${item.def.name}: als vorrätig gemerkt'),
+          // With an action, snack bars stay until dismissed unless told otherwise.
+          persist: false,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(label: 'Rückgängig', onPressed: () => c.undoMarkAtHome(item.key, added)),
+        ));
       },
       child: InkWell(
         onTap: () {

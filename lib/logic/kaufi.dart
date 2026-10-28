@@ -70,12 +70,35 @@ class ShoppingList {
     required this.to,
     required this.open,
     required this.checked,
+    this.meal,
+    this.alreadyHome = 0,
   });
 
   final Day from;
   final Day to;
   final List<ShoppingItem> open;
   final List<ShoppingItem> checked;
+
+  /// Set when the list is narrowed down to one meal.
+  final Meal? meal;
+
+  /// Ingredients of [meal] that need no shopping because they are at home.
+  final int alreadyHome;
+
+  /// Only what [meal] needs, in the same order.
+  ShoppingList forMeal(Meal meal) {
+    final keys = {for (final n in meal.needs) n.key};
+    final o = open.where((i) => keys.contains(i.key)).toList();
+    final c = checked.where((i) => keys.contains(i.key)).toList();
+    return ShoppingList(
+      from: from,
+      to: to,
+      open: o,
+      checked: c,
+      meal: meal,
+      alreadyHome: keys.length - o.length - c.length,
+    );
+  }
 
   Iterable<ShoppingItem> get all => [...open, ...checked];
   bool get isEmpty => open.isEmpty && checked.isEmpty;
@@ -141,7 +164,7 @@ class Kaufi {
     final out = <String, List<String>>{};
     for (final m in upcomingMeals) {
       if (m.day < from || m.day >= from + days) continue;
-      final name = m.name.replaceAll(RegExp(r'\s*\(.*?\)'), '');
+      final name = m.displayName;
       for (final n in m.needs) {
         final list = out.putIfAbsent(n.key, () => []);
         if (!list.contains(name)) list.add(name);
@@ -348,6 +371,12 @@ class Kaufi {
     state.meals.sort((a, b) => a.day.compareTo(b.day));
     if (imp.shoppingDays != null) state.shoppingDays = imp.shoppingDays!;
     return skipped;
+  }
+
+  /// Meals within the shopping window that need any ingredient, by day.
+  List<Meal> mealsInWindow(Day today) {
+    final end = today + state.shoppingDays;
+    return upcomingMeals.where((m) => m.day >= today && m.day < end && m.needs.isNotEmpty).toList();
   }
 
   /// Upcoming (not yet eaten) meals, by day.

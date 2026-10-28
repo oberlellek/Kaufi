@@ -38,6 +38,9 @@ class Meal {
   /// Title of the imported plan this meal came from.
   final String? plan;
 
+  /// [name] without notes in parentheses, e.g. "(4 Portionen)".
+  String get displayName => name.replaceAll(RegExp(r'\s*\(.*?\)'), '');
+
   factory Meal.fromJson(Map<String, dynamic> j) => Meal(
         id: j['id'] as String,
         day: Day(j['day'] as int),

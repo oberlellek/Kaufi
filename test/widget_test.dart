@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,6 +60,23 @@ void main() {
     expect(c.shoppingList.open.any((i) => i.key == 'frozen-salmon'), isFalse);
   });
 
+  testWidgets('swipes from the screen edge are left to the system back gesture', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    await tester.pumpWidget(KaufiApp(controller: c));
+    final row = tester.getCenter(find.text('Champignons'));
+    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    // Back gesture from the right edge towards the left.
+    await tester.dragFrom(Offset(width - 4, row.dy), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    // And from the left edge towards the right.
+    await tester.dragFrom(Offset(4, row.dy), const Offset(500, 0));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 0);
+    expect(c.state.trip, isEmpty);
+  });
+
   testWidgets('swipe left marks an item as already at home', (tester) async {
     final c = controller();
     c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
@@ -70,5 +88,45 @@ void main() {
     expect(find.textContaining('als vorrätig gemerkt'), findsOneWidget);
     expect(c.kaufi.pantry('mushrooms'), 250);
     expect(find.byType(SnackBar), findsOneWidget);
+    // The undo hint goes away on its own.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('drag the meal button to the middle and turn to filter by meal', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    await tester.pumpWidget(KaufiApp(controller: c));
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    final center = Offset(size.width / 2, size.height * 0.45);
+    final gesture = await tester.startGesture(tester.getCenter(find.byIcon(Icons.restaurant_menu)));
+    await gesture.moveBy(const Offset(-20, -20));
+    await tester.pump();
+    expect(find.text('In die Mitte ziehen'), findsOneWidget);
+
+    await gesture.moveTo(center + const Offset(0, -80));
+    await tester.pump();
+    expect(find.text('Drehen zum Wechseln · Loslassen wählt aus'), findsOneWidget);
+    // A quarter turn clockwise, in small steps.
+    for (var deg = -90; deg <= 0; deg += 10) {
+      final a = deg * math.pi / 180;
+      await gesture.moveTo(center + Offset(math.cos(a), math.sin(a)) * 80);
+      await tester.pump();
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final meal = c.filteredMeal;
+    expect(meal, isNotNull);
+    expect(find.text(meal!.name), findsWidgets);
+    expect(find.byTooltip('Filter aus'), findsOneWidget);
+
+    // Tapping the button turns the filter off again.
+    await tester.tap(find.byIcon(Icons.restaurant_menu));
+    await tester.pumpAndSettle();
+    expect(c.filteredMeal, isNull);
   });
 }

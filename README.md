@@ -24,7 +24,10 @@ Alles bleibt auf dem Gerät. Kein Konto, keine Werbung, und die Release-App hat 
 | Nach links wischen | „Hab ich schon“: Kaufi nimmt an, dass mindestens eine Packung zu Hause ist. |
 | Lange drücken | Packungsgröße und Anzahl ändern. Die Packungsgröße merkt sich Kaufi. |
 | − / + unten, oder seitlich über die Tage wischen | Für wie viele Tage du einkaufst. |
+| Gerichte-Knopf gedrückt halten, in die Mitte ziehen, drehen, loslassen | Nur die Zutaten eines Gerichts zeigen. „Alle Zutaten“ im Drehrad oder Antippen des Knopfs hebt den Filter auf. |
 | „Fertig“ | Einkauf abschließen. Passiert nach vier Stunden ohne Abhaken auch von selbst. |
+
+Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von Android und lösen in der Liste nichts aus.
 
 ### Was Kaufi im Hintergrund macht
 
