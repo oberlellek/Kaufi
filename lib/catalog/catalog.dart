@@ -41,6 +41,8 @@ class IngredientDef {
     this.category = Category.other,
     this.pack,
     this.packLabel,
+    this.countLabel,
+    this.loose = false,
     this.priceMin,
     this.priceMax,
     this.gramsPerPiece,
@@ -59,12 +61,20 @@ class IngredientDef {
   /// The unit amounts of this ingredient are tracked in.
   final Dim unit;
 
-  /// Typical package size in [unit]. Shopping rounds up to whole packages.
+  /// Typical package size in [unit]. What is bought is assumed to be whole
+  /// packages, unless the ingredient is [loose].
   final double? pack;
 
   /// How a package is called when it is not just pieces, singular and
   /// plural: ("Knolle", "Knollen") for garlic counted in cloves.
   final (String, String)? packLabel;
+
+  /// How one piece is called when it is not "Stück": ("Zehe", "Zehen").
+  final (String, String)? countLabel;
+
+  /// Sold by the piece or by weight, so you buy exactly what is missing.
+  /// [pack] is then only the amount [priceMin] and [priceMax] refer to.
+  final bool loose;
 
   /// Rough price range per package in EUR.
   final double? priceMin;
@@ -79,6 +89,9 @@ class IngredientDef {
   bool get isCustom => id.startsWith(customPrefix);
   bool get hasPrice => pack != null && priceMin != null && priceMax != null;
 
+  /// "2 Zehen", "250 g".
+  String format(double amount) => formatAmount(amount, unit, label: countLabel);
+
   IngredientDef copyWith({double? pack}) => IngredientDef(
         id: id,
         name: name,
@@ -86,6 +99,8 @@ class IngredientDef {
         category: category,
         pack: pack ?? this.pack,
         packLabel: packLabel,
+        countLabel: countLabel,
+        loose: loose,
         priceMin: priceMin,
         priceMax: priceMax,
         gramsPerPiece: gramsPerPiece,
@@ -124,14 +139,16 @@ class IngredientDef {
       pMin = (price[0] as num).toDouble();
       pMax = (price[1] as num).toDouble();
     }
-    final pl = j['pl'];
+    (String, String)? label(Object? l) => l is List && l.length == 2 ? (l[0] as String, l[1] as String) : null;
     return IngredientDef(
       id: j['id'] as String,
       name: j['name'] as String,
       category: Category.parse(j['cat'] as String?),
       unit: Dim.fromCode(j['unit'] as String?) ?? Dim.count,
       pack: (j['pack'] as num?)?.toDouble(),
-      packLabel: pl is List && pl.length == 2 ? (pl[0] as String, pl[1] as String) : null,
+      packLabel: label(j['pl']),
+      countLabel: label(j['cl']),
+      loose: j['loose'] == true,
       priceMin: pMin,
       priceMax: pMax,
       gramsPerPiece: (j['pc'] as num?)?.toDouble(),
@@ -147,6 +164,8 @@ class IngredientDef {
         'unit': unit.code,
         if (pack != null) 'pack': pack,
         if (packLabel != null) 'pl': [packLabel!.$1, packLabel!.$2],
+        if (countLabel != null) 'cl': [countLabel!.$1, countLabel!.$2],
+        if (loose) 'loose': true,
         if (priceMin != null && priceMax != null) 'price': [priceMin, priceMax],
         if (gramsPerPiece != null) 'pc': gramsPerPiece,
         if (density != 1) 'dens': density,

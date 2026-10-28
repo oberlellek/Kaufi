@@ -6,7 +6,7 @@ Alles bleibt auf dem Gerät. Kein Konto, keine Werbung, und die Release-App hat 
 
 <p>
   <img src="docs/screenshots/einkaufsliste.png" width="230" alt="Einkaufsliste">
-  <img src="docs/screenshots/packung.png" width="230" alt="Packungsgröße ändern">
+  <img src="docs/screenshots/packung.png" width="230" alt="Menge ändern">
   <img src="docs/screenshots/essensplan.png" width="230" alt="Essensplan">
 </p>
 
@@ -14,17 +14,17 @@ Alles bleibt auf dem Gerät. Kein Konto, keine Werbung, und die Release-App hat 
 
 1. **Plan holen.** Im Menü „Prompt für deine KI kopieren“ antippen und den Text in einen KI-Chat einfügen. Dort besprichst du, was du essen willst, und die KI antwortet mit einem Plan im [Kaufi-Format](docs/importformat.md).
 2. **Importieren.** Die Antwort kopieren und „Aus der Zwischenablage einfügen“ wählen, oder die Antwort bzw. Datei über „Teilen → Kaufi“ schicken. Eine `.json`-Datei lässt sich auch direkt mit Kaufi öffnen.
-3. **Einkaufen.** Kaufi zeigt, was für die nächsten Tage fehlt, aufgerundet auf übliche Packungsgrößen.
+3. **Einkaufen.** Kaufi zeigt, was dir für die nächsten Tage noch fehlt: Brauchst du fünf Zwiebeln und hast zwei zu Hause, stehen da drei.
 
 ### Bedienung im Laden
 
 | Geste | Wirkung |
 | --- | --- |
 | Antippen oder nach rechts wischen | In den Korb. Nochmal antippen holt es zurück. |
-| Nach links wischen | „Hab ich schon“: Kaufi nimmt an, dass mindestens eine Packung zu Hause ist. |
-| Lange drücken | Packungsgröße und Anzahl ändern. Die Packungsgröße merkt sich Kaufi. |
+| Nach links wischen | „Hab ich schon“: Kaufi nimmt an, dass genug zu Hause ist, bei abgepackten Sachen mindestens eine Packung. |
+| Lange drücken | Eintragen, wie viel du wirklich nimmst. Bei abgepackten Sachen Packungsgröße und Anzahl, die Packungsgröße merkt sich Kaufi. |
 | − / + unten, oder seitlich über die Tage wischen | Für wie viele Tage du einkaufst. |
-| Gerichte-Knopf gedrückt halten, in die Mitte ziehen, drehen, loslassen | Nur die Zutaten eines Gerichts zeigen. „Alle Zutaten“ im Drehrad oder Antippen des Knopfs hebt den Filter auf. |
+| Gerichte-Knopf | Nur die Zutaten eines Gerichts zeigen. Nochmal antippen oder „Alle Zutaten“ wählen hebt den Filter auf. |
 | „Fertig“ | Einkauf abschließen. Passiert nach vier Stunden ohne Abhaken auch von selbst. |
 
 Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von Android und lösen in der Liste nichts aus.
@@ -32,7 +32,7 @@ Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von A
 ### Was Kaufi im Hintergrund macht
 
 - **Reihenfolge lernen.** Die Reihenfolge, in der du Zutaten zum ersten Mal abhakst, wird zu ihrer Reihenfolge in der Liste. Neue Zutaten landen hinter der, die du davor abgehakt hast. Was noch nie gekauft wurde, steht neben Zutaten aus derselben Abteilung.
-- **Vorrat führen.** Was du kaufst, kommt in den Vorrat. Ist ein Tag vorbei, zieht Kaufi ab, was laut Plan gegessen wurde. Übrig gebliebene Eier stehen also nächste Woche nicht wieder auf der Liste. Unter „Vorrat“ kannst du korrigieren.
+- **Vorrat führen.** Was du kaufst, kommt in den Vorrat. Lose Ware wie Zwiebeln, Äpfel oder Kartoffeln zählt genau, bei abgepackten Sachen rechnet Kaufi mit ganzen Packungen: Brauchst du acht Eier, kommen zehn in den Vorrat. Ist ein Tag vorbei, zieht Kaufi ab, was laut Plan gegessen wurde. Übrig gebliebene Eier stehen also nächste Woche nicht wieder auf der Liste. Unter „Vorrat“ kannst du korrigieren.
 - **Plan anpassen.** Unter „Essensplan“ hältst du ein Gericht gedrückt und ziehst es auf einen anderen Tag, oder du schiebst ab einem Tag alles nach hinten. Die Einkaufsliste rechnet sich neu.
 - **Preis schätzen.** Der Katalog hat grobe Preisspannen pro Packung, die Liste zeigt die Summe.
 

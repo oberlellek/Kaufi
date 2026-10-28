@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/day.dart';
-import '../core/units.dart';
+import '../logic/kaufi.dart';
 import '../model/app_state.dart';
 import 'app.dart';
 
@@ -153,7 +153,7 @@ class _MealCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                '${c.kaufi.def(n.key).name} · ${formatAmount(n.amount, c.kaufi.def(n.key).unit)}',
+                '${c.kaufi.def(n.key).name} · ${formatNeed(c.kaufi.def(n.key), n.amount, whole: false)}',
                 style: theme.textTheme.bodyMedium,
               ),
             ),

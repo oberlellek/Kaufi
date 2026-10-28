@@ -36,7 +36,7 @@ class PantryScreen extends StatelessWidget {
             ListTile(
               title: Text(def.name),
               subtitle: Text(def.category.label),
-              trailing: Text(formatAmount(amount, def.unit), style: theme.textTheme.titleMedium),
+              trailing: Text(def.format(amount), style: theme.textTheme.titleMedium),
               onTap: () => _edit(context, def, amount),
             ),
         ],
@@ -60,7 +60,7 @@ class PantryScreen extends StatelessWidget {
             suffixText: switch (def.unit) {
               Dim.mass => 'g',
               Dim.volume => 'ml',
-              Dim.count => 'Stück',
+              Dim.count => def.countLabel?.$2 ?? 'Stück',
             },
           ),
         ),

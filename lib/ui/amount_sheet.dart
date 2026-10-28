@@ -6,8 +6,9 @@ import '../core/units.dart';
 import '../logic/kaufi.dart';
 import 'app.dart';
 
-/// Long press on a row: "the package here is different" or "I take two".
-/// The package size is remembered for the next trip.
+/// Long press on a row: "I take more" or "the package here is different".
+/// Loose items get a single amount; for packaged items the package size is
+/// remembered for the next trip.
 Future<void> showAmountSheet(BuildContext context, ShoppingItem item) {
   return showModalBottomSheet<void>(
     context: context,
@@ -27,6 +28,7 @@ class _AmountSheet extends StatefulWidget {
 }
 
 class _AmountSheetState extends State<_AmountSheet> {
+  /// Package size, or the whole amount for loose items.
   late double _size;
   late int _count;
 
@@ -35,8 +37,8 @@ class _AmountSheetState extends State<_AmountSheet> {
     super.initState();
     final item = widget.item;
     final pack = item.pack;
-    if (pack != null && pack > 0) {
-      _size = pack;
+    if (!item.exact) {
+      _size = pack!;
       _count = math.max(1, (item.buy / pack - 1e-6).ceil());
     } else {
       _size = item.buy > 0 ? item.buy : _sizeStep(0);
@@ -62,8 +64,14 @@ class _AmountSheetState extends State<_AmountSheet> {
   Widget build(BuildContext context) {
     final c = KaufiScope.read(context);
     final item = widget.item;
+    final def = item.def;
     final theme = Theme.of(context);
-    final unit = item.def.unit;
+    final home = item.checked ? item.atHome - item.buy : item.atHome;
+    // "1 Knolle" reads better than "10 Zehen" when it is the usual package.
+    final packLabel = def.packLabel;
+    final total = !item.exact && packLabel != null && (_size - (def.pack ?? 0)).abs() < 1e-6
+        ? '$_count ${_count == 1 ? packLabel.$1 : packLabel.$2}'
+        : def.format(_size * _count);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
@@ -71,34 +79,43 @@ class _AmountSheetState extends State<_AmountSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(item.def.name, style: theme.textTheme.headlineSmall),
+            Text(def.name, style: theme.textTheme.headlineSmall),
             const SizedBox(height: 4),
             Text(
-              'Bedarf ${formatAmount(item.need, unit)} · zu Hause ${formatAmount(item.checked ? item.atHome - item.buy : item.atHome, unit)}',
+              [
+                'Bedarf ${formatNeed(def, item.need, whole: false)}',
+                if (home > 0) 'zu Hause ${def.format(home)}',
+              ].join(' · '),
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 20),
             _Stepper(
-              label: 'Packungsgröße',
-              value: formatAmount(_size, unit),
+              label: item.exact ? 'Menge' : 'Packungsgröße',
+              value: def.format(_size),
               onMinus: _size > _sizeStep(_size - 1) ? () => _changeSize(-1) : null,
               onPlus: () => _changeSize(1),
             ),
-            const SizedBox(height: 12),
-            _Stepper(
-              label: 'Anzahl',
-              value: '$_count',
-              onMinus: _count > 1 ? () => setState(() => _count--) : null,
-              onPlus: () => setState(() => _count++),
-            ),
+            if (!item.exact) ...[
+              const SizedBox(height: 12),
+              _Stepper(
+                label: 'Anzahl',
+                value: '$_count',
+                onMinus: _count > 1 ? () => setState(() => _count--) : null,
+                onPlus: () => setState(() => _count++),
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
               onPressed: () {
-                c.buyPacks(item.key, _size, _count);
+                if (item.exact) {
+                  c.buyAmount(item.key, _size);
+                } else {
+                  c.buyPacks(item.key, _size, _count);
+                }
                 Navigator.pop(context);
               },
-              child: Text('${formatAmount(_size * _count, unit)} in den Korb'),
+              child: Text('$total in den Korb'),
             ),
           ],
         ),

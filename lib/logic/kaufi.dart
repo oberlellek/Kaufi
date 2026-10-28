@@ -11,6 +11,21 @@ const _eps = 1e-6;
 /// A shopping trip counts as finished when nothing was checked for this long.
 const tripTimeout = Duration(hours: 4);
 
+/// Whether [def] is bought in exactly the amount missing rather than in whole
+/// packages of [pack].
+bool buysExactly(IngredientDef def, double? pack) => def.loose || pack == null || pack <= 0;
+
+/// Rounds up to what can be bought: whole pieces, whole grams or millilitres.
+double roundUpToWhole(double amount) => math.max(0, (amount - _eps).ceil()).toDouble();
+
+/// "3 Stück", "2 Zehen", "250 g". Amounts too small to buy, like a pinch of
+/// salt or a teaspoon of cumin, read "etwas": what matters is that it is in
+/// the house. With [whole], rounds up to whole pieces or grams.
+String formatNeed(IngredientDef def, double amount, {bool whole = true}) {
+  if (def.unit != Dim.count && amount < 5) return 'etwas';
+  return def.format(whole ? roundUpToWhole(amount) : amount);
+}
+
 class ShoppingItem {
   ShoppingItem({
     required this.def,
@@ -30,7 +45,8 @@ class ShoppingItem {
   /// In the pantry, including what is already in the basket.
   final double atHome;
 
-  /// What to buy (unchecked) or what was bought (checked).
+  /// What checking off puts into the basket (unchecked) or what was bought
+  /// (checked): whole packages, or exactly what is missing for loose items.
   final double buy;
   final double? pack;
   final TripEntry? tripEntry;
@@ -41,26 +57,35 @@ class ShoppingItem {
   bool get checked => tripEntry != null;
   String get key => def.id;
   double get missing => math.max(0, need - atHome);
+  bool get exact => buysExactly(def, pack);
 
   int? get packs => pack == null ? null : (buy / pack! - _eps).ceil().clamp(1, 999);
 
-  double? get priceMin => def.hasPrice && packs != null ? packs! * def.priceMin! : null;
-  double? get priceMax => def.hasPrice && packs != null ? packs! * def.priceMax! : null;
+  double? get priceMin => _price(def.priceMin);
+  double? get priceMax => _price(def.priceMax);
 
-  /// "2 × 500 g" or "250 g".
+  double? _price(double? perPack) {
+    if (!def.hasPrice || perPack == null) return null;
+    if (def.loose) return buy / def.pack! * perPack;
+    return packs == null ? null : packs! * perPack;
+  }
+
+  /// What is still missing: "3 Stück", "2 Zehen", "etwas".
+  String get needLabel => formatNeed(def, missing);
+
+  /// What is in the basket: "1 Knolle", "2 × 400 g", "3 Stück".
   String get buyLabel {
     final p = packs;
-    final label = def.packLabel;
-    if (label != null && p != null && pack != null && (p * pack! - buy).abs() < 0.01) {
-      return '$p ${p == 1 ? label.$1 : label.$2}';
+    if (!exact && p != null && (p * pack! - buy).abs() < 0.01) {
+      final label = def.packLabel;
+      if (label != null) return '$p ${p == 1 ? label.$1 : label.$2}';
+      // One piece per package reads better as a plain count.
+      if (!(def.unit == Dim.count && pack == 1)) {
+        final size = def.format(pack!);
+        return p == 1 ? size : '$p × $size';
+      }
     }
-    // Loose items (one piece per "package") read better as a plain count.
-    final loose = def.unit == Dim.count && pack == 1;
-    if (!loose && pack != null && p != null && (p * pack! - buy).abs() < 0.01) {
-      final size = formatAmount(pack!, def.unit);
-      return p == 1 ? size : '$p × $size';
-    }
-    return formatAmount(buy, def.unit);
+    return def.format(buy);
   }
 }
 
@@ -186,10 +211,12 @@ class Kaufi {
     return out;
   }
 
+  /// What checking off puts into the pantry: exactly what is missing for
+  /// loose items, otherwise whole packages.
   double suggestedBuy(String key, double missing) {
     final pack = packFor(key);
-    if (pack == null || pack <= 0) return missing;
-    return (missing / pack - _eps).ceil() * pack;
+    if (buysExactly(def(key), pack)) return roundUpToWhole(missing);
+    return (missing / pack! - _eps).ceil() * pack;
   }
 
   ShoppingList shoppingList(Day today) {
@@ -308,11 +335,12 @@ class Kaufi {
   }
 
   /// "Hab ich schon": the item is at home already. Without knowing how much,
-  /// assume enough for the window, at least one package. Returns the amount
-  /// added so the caller can undo it.
+  /// assume enough for the window, and at least one package of things that
+  /// come in packages. Returns the amount added so the caller can undo it.
   double markAtHome(String key, Day today) {
     final missing = math.max(0.0, (needs(today, state.shoppingDays)[key] ?? 0) - pantry(key));
-    final add = math.max(missing, packFor(key) ?? missing);
+    final pack = packFor(key);
+    final add = buysExactly(def(key), pack) ? missing : math.max(missing, pack!);
     _addPantry(key, add);
     return add;
   }

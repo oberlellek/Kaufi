@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,39 +93,46 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
   });
 
-  testWidgets('drag the meal button to the middle and turn to filter by meal', (tester) async {
+  testWidgets('the meal button opens a list to filter by meal', (tester) async {
     final c = controller();
     c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
         replace: true);
     await tester.pumpWidget(KaufiApp(controller: c));
 
-    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
-    final center = Offset(size.width / 2, size.height * 0.45);
-    final gesture = await tester.startGesture(tester.getCenter(find.byIcon(Icons.restaurant_menu)));
-    await gesture.moveBy(const Offset(-20, -20));
-    await tester.pump();
-    expect(find.text('In die Mitte ziehen'), findsOneWidget);
-
-    await gesture.moveTo(center + const Offset(0, -80));
-    await tester.pump();
-    expect(find.text('Drehen zum Wechseln · Loslassen wählt aus'), findsOneWidget);
-    // A quarter turn clockwise, in small steps.
-    for (var deg = -90; deg <= 0; deg += 10) {
-      final a = deg * math.pi / 180;
-      await gesture.moveTo(center + Offset(math.cos(a), math.sin(a)) * 80);
-      await tester.pump();
-    }
-    await gesture.up();
+    await tester.tap(find.byIcon(Icons.restaurant_menu));
+    await tester.pumpAndSettle();
+    expect(find.text('Alle Zutaten'), findsOneWidget);
+    final meal = c.kaufi.mealsInWindow(c.today).first;
+    await tester.tap(find.text(meal.name).last);
     await tester.pumpAndSettle();
 
-    final meal = c.filteredMeal;
-    expect(meal, isNotNull);
-    expect(find.text(meal!.name), findsWidgets);
+    expect(c.filteredMeal?.id, meal.id);
+    expect(find.text(meal.name), findsWidgets);
     expect(find.byTooltip('Filter aus'), findsOneWidget);
 
-    // Tapping the button turns the filter off again.
+    // Tapping the button again turns the filter off.
     await tester.tap(find.byIcon(Icons.restaurant_menu));
     await tester.pumpAndSettle();
     expect(c.filteredMeal, isNull);
+  });
+
+  testWidgets('the list shows what is still missing, not whole packages', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    await tester.pumpWidget(KaufiApp(controller: c));
+
+    Finder label(String key, String text) =>
+        find.descendant(of: find.byKey(ValueKey('open-$key')), matching: find.text(text));
+    // The chili needs one onion and two cloves of garlic.
+    await tester.scrollUntilVisible(label('onion', '1 Stück'), 300);
+    await tester.scrollUntilVisible(label('garlic', '2 Zehen'), 300);
+
+    // Onions are bought loose, garlic by the bulb.
+    await tester.tap(find.text('Zwiebeln'));
+    await tester.tap(find.text('Knoblauch'));
+    await tester.pump();
+    expect(c.kaufi.pantry('onion'), 1);
+    expect(c.kaufi.pantry('garlic'), 10);
   });
 }

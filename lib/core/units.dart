@@ -124,7 +124,11 @@ String _num(double v, {int decimals = 1}) {
 }
 
 /// Human readable amount in German, e.g. "1,5 kg", "250 ml", "6 Stück".
-String formatAmount(double amount, Dim dim) {
+/// Pieces can have their own name, singular and plural: ("Zehe", "Zehen").
+String formatAmount(double amount, Dim dim, {(String, String)? label}) {
+  if (dim == Dim.count && label != null) {
+    return '${_num(amount)} ${amount <= 1.05 ? label.$1 : label.$2}';
+  }
   switch (dim) {
     case Dim.mass:
       if (amount >= 1000) return '${_num(amount / 1000, decimals: 2)} kg';

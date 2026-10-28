@@ -27,14 +27,16 @@ void main() {
   {"day": 9, "name": "Später", "items": [{"name": "Eier", "amount": 2}]}
 ]}''';
 
-  test('shopping list rounds up to packages and respects the window', () {
+  test('the list shows what is missing, the basket gets whole packages', () {
     final k = withPlan(week);
     final list = k.shoppingList(monday);
     final eggs = list.open.firstWhere((i) => i.key == 'egg');
     expect(eggs.need, 8); // day 9 is outside the 7 day window
+    expect(eggs.needLabel, '8 Stück');
     expect(eggs.buy, 10);
     expect(eggs.buyLabel, '10 Stück');
     final oats = list.open.firstWhere((i) => i.key == 'rolled-oats');
+    expect(oats.needLabel, '80 g');
     expect(oats.buy, 500);
     expect(list.priceMin, greaterThan(0));
     expect(list.to, monday + 6);
@@ -43,6 +45,31 @@ void main() {
     final longer = k.shoppingList(monday).open.firstWhere((i) => i.key == 'egg');
     expect(longer.need, 10);
     expect(longer.buy, 10);
+  });
+
+  test('loose produce is bought exactly, pieces have their own names', () {
+    final k = withPlan('''
+{"meals":[{"day":1,"name":"Chili","items":[
+  {"name":"Zwiebel","amount":5},{"name":"Knoblauch","amount":2,"unit":"Zehen"},
+  {"name":"Gurke","amount":0.5},{"name":"Salat","amount":0.75},{"name":"Salz"}]}]}''');
+    k.setPantry('onion', 2);
+    ShoppingItem item(String key) => k.shoppingList(monday).open.firstWhere((i) => i.key == key);
+
+    expect(item('onion').needLabel, '3 Stück');
+    expect(item('cucumber').needLabel, '1 Stück');
+    expect(item('lettuce').needLabel, '1 Kopf');
+    expect(item('garlic').needLabel, '2 Zehen');
+    expect(item('salt').needLabel, 'etwas');
+
+    expect(item('onion').priceMax, closeTo(0.6, 1e-9)); // 3 of a net of 10 at 2 €
+    k.check('onion', monday, now);
+    expect(k.pantry('onion'), 5);
+    k.check('garlic', monday, now);
+    expect(k.pantry('garlic'), 10);
+    expect(k.shoppingList(monday).checked.firstWhere((i) => i.key == 'garlic').buyLabel, '1 Knolle');
+
+    // "Hab ich schon" on a loose item assumes just enough, not a whole net.
+    expect(k.markAtHome('cucumber', monday), 0.5);
   });
 
   test('checking adds to the pantry, leftovers are remembered next time', () {

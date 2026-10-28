@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/day.dart';
-import '../core/units.dart';
 import '../logic/kaufi.dart';
 import '../model/app_state.dart';
 import 'amount_sheet.dart';
 import 'app.dart';
 import 'import_flow.dart';
-import 'meal_dial.dart';
+import 'meal_filter.dart';
 import 'menu_sheet.dart';
 import 'swipe_row.dart';
 
@@ -68,7 +67,7 @@ class ShoppingScreen extends StatelessWidget {
 
     return Scaffold(
       body: SafeArea(bottom: false, child: body),
-      floatingActionButton: c.kaufi.mealsInWindow(c.today).isEmpty ? null : const MealDialButton(),
+      floatingActionButton: c.kaufi.mealsInWindow(c.today).isEmpty ? null : const MealFilterButton(),
       bottomNavigationBar: const _BottomBar(),
     );
   }
@@ -193,12 +192,12 @@ class _OpenRow extends StatelessWidget {
     final c = KaufiScope.read(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final unit = item.def.unit;
+    final def = item.def;
     final forMeal = meal?.needs.where((n) => n.key == item.key).firstOrNull;
     final others = [for (final u in item.usedIn) if (u != meal?.displayName) u];
     final detail = [
-      if (item.atHome > 0) '${formatAmount(item.atHome, unit)} zu Hause',
-      if (forMeal != null) 'hier ${formatAmount(forMeal.amount, unit)}',
+      if (item.atHome > 0) '${def.format(item.atHome)} zu Hause',
+      if (forMeal != null) 'hier ${formatNeed(def, forMeal.amount, whole: false)}',
       if (forMeal != null && others.isNotEmpty) 'auch für ${others.join(', ')}',
       if (forMeal == null && item.usedIn.isNotEmpty) 'für ${item.usedIn.join(', ')}',
     ].join(' · ');
@@ -264,7 +263,7 @@ class _OpenRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(item.buyLabel, style: theme.textTheme.titleMedium),
+                Text(item.needLabel, style: theme.textTheme.titleMedium),
               ],
             ),
           ),
@@ -311,7 +310,7 @@ class _CheckedRow extends StatelessWidget {
                           decoration: TextDecoration.lineThrough,
                         )),
                     if (stillMissing)
-                      Text('Es fehlen noch ${formatAmount(item.missing, item.def.unit)}',
+                      Text('Es fehlen noch ${item.needLabel}',
                           style: theme.textTheme.bodySmall?.copyWith(color: scheme.error)),
                   ],
                 ),
