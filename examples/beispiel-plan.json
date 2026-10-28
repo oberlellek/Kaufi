@@ -1,0 +1,198 @@
+{
+  "kaufi": 1,
+  "title": "Meal-Prep Woche 1",
+  "source": "Claude",
+  "shoppingDays": 7,
+  "meals": [
+    {
+      "day": 1,
+      "name": "Chili con Carne (4 Portionen)",
+      "items": [
+        {"id": "ground-beef", "name": "Rinderhack", "amount": 500, "unit": "g"},
+        {"id": "onion", "name": "Zwiebel", "amount": 1},
+        {"id": "garlic", "name": "Knoblauch", "amount": 2, "unit": "Zehen"},
+        {"id": "bell-pepper", "name": "Paprika", "amount": 2},
+        {"id": "canned-tomatoes", "name": "Gehackte Tomaten", "amount": 2, "unit": "Dose"},
+        {"id": "tomato-paste", "name": "Tomatenmark", "amount": 2, "unit": "EL"},
+        {"id": "kidney-beans", "name": "Kidneybohnen", "amount": 1, "unit": "Dose"},
+        {"id": "corn-canned", "name": "Mais", "amount": 150, "unit": "g"},
+        {"id": "paprika-powder", "name": "Paprikapulver", "amount": 1, "unit": "TL"},
+        {"id": "cumin", "name": "Kreuzkümmel", "amount": 1, "unit": "TL"},
+        {"id": "oregano", "name": "Oregano", "amount": 1, "unit": "TL"},
+        {"id": "chili-flakes", "name": "Chiliflocken"},
+        {"id": "salt", "name": "Salz"},
+        {"id": "pepper", "name": "Pfeffer"},
+        {"id": "rice", "name": "Reis", "amount": 240, "unit": "g"}
+      ]
+    },
+    {
+      "day": 1,
+      "name": "Maiswaffeln mit Kräuterfrischkäse und Gurke",
+      "items": [
+        {"id": "rice-cakes", "name": "Maiswaffeln", "amount": 30, "unit": "g"},
+        {"id": "cream-cheese", "name": "Kräuterfrischkäse", "amount": 40, "unit": "g"},
+        {"id": "cucumber", "name": "Gurke", "amount": 0.5}
+      ]
+    },
+    {
+      "day": 2,
+      "name": "Omelett mit Schinken und Paprika",
+      "items": [
+        {"id": "egg", "name": "Eier", "amount": 3},
+        {"id": "milk", "name": "Milch", "amount": 30, "unit": "ml"},
+        {"id": "ham", "name": "Kochschinken", "amount": 40, "unit": "g"},
+        {"id": "bell-pepper", "name": "Paprika", "amount": 0.5},
+        {"id": "mushrooms", "name": "Champignons", "amount": 60, "unit": "g"},
+        {"id": "grated-cheese", "name": "Geriebener Käse", "amount": 20, "unit": "g"}
+      ]
+    },
+    {
+      "day": 2,
+      "name": "Thunfisch-Sandwich",
+      "items": [
+        {"id": "tuna", "name": "Thunfisch", "amount": 1, "unit": "Dose"},
+        {"id": "yogurt", "name": "Naturjoghurt", "amount": 2, "unit": "EL"},
+        {"id": "lemon", "name": "Zitrone", "amount": 0.25},
+        {"id": "wholegrain-bread", "name": "Vollkornbrot", "amount": 2, "unit": "Scheiben"},
+        {"id": "cucumber", "name": "Gurke", "amount": 0.25},
+        {"id": "lettuce", "name": "Salat", "amount": 0.25}
+      ]
+    },
+    {
+      "day": 2,
+      "name": "Popcorn zum Filmabend",
+      "items": [
+        {"id": "popcorn-kernels", "name": "Popcornmais", "amount": 40, "unit": "g"},
+        {"id": "cooking-oil", "name": "Öl", "amount": 1, "unit": "TL"},
+        {"id": "cinnamon", "name": "Zimt"}
+      ]
+    },
+    {
+      "day": 3,
+      "name": "Rührei mit Vollkornbrot",
+      "items": [
+        {"id": "egg", "name": "Eier", "amount": 3},
+        {"id": "milk", "name": "Milch", "amount": 30, "unit": "ml"},
+        {"id": "wholegrain-bread", "name": "Vollkornbrot", "amount": 2, "unit": "Scheiben"}
+      ]
+    },
+    {
+      "day": 3,
+      "name": "Chili als Burrito-Wrap",
+      "items": [
+        {"id": "tortilla", "name": "Weizentortillas", "amount": 1},
+        {"id": "lettuce", "name": "Salat", "amount": 0.25},
+        {"id": "yogurt", "name": "Naturjoghurt", "amount": 30, "unit": "g"}
+      ]
+    },
+    {
+      "day": 3,
+      "name": "Radieschen-Salat mit Ei und Schinken",
+      "items": [
+        {"id": "radish", "name": "Radieschen", "amount": 0.5, "unit": "Bund"},
+        {"id": "cucumber", "name": "Gurke", "amount": 0.5},
+        {"id": "cherry-tomato", "name": "Kirschtomaten", "amount": 80, "unit": "g"},
+        {"id": "lettuce", "name": "Salat", "amount": 0.25},
+        {"id": "sunflower-seeds", "name": "Sonnenblumenkerne", "amount": 1, "unit": "EL"},
+        {"id": "egg", "name": "Eier", "amount": 2},
+        {"id": "ham", "name": "Kochschinken", "amount": 40, "unit": "g"},
+        {"id": "cooking-oil", "name": "Öl", "amount": 1, "unit": "EL"},
+        {"id": "vinegar", "name": "Heller Balsamico", "amount": 1, "unit": "EL"},
+        {"id": "mustard", "name": "Senf", "amount": 0.5, "unit": "TL"},
+        {"id": "honey", "name": "Honig", "amount": 1, "unit": "TL"}
+      ]
+    },
+    {
+      "day": 4,
+      "name": "Overnight Oats",
+      "items": [
+        {"id": "rolled-oats", "name": "Haferflocken", "amount": 50, "unit": "g"},
+        {"id": "skyr", "name": "Skyr", "amount": 150, "unit": "g"},
+        {"id": "milk", "name": "Milch", "amount": 100, "unit": "ml"},
+        {"id": "frozen-berries", "name": "TK-Beeren", "amount": 80, "unit": "g"}
+      ]
+    },
+    {
+      "day": 4,
+      "name": "Blech-Hähnchen mit Kartoffeln und Brokkoli (3 Portionen)",
+      "items": [
+        {"id": "chicken-breast", "name": "Hähnchenbrust", "amount": 600, "unit": "g"},
+        {"id": "potato", "name": "Kartoffeln", "amount": 750, "unit": "g"},
+        {"id": "frozen-broccoli", "name": "TK-Brokkoli", "amount": 450, "unit": "g"},
+        {"id": "cooking-oil", "name": "Öl", "amount": 2, "unit": "EL"},
+        {"id": "paprika-powder", "name": "Paprikapulver", "amount": 1, "unit": "TL"},
+        {"id": "garlic-powder", "name": "Knoblauchpulver", "amount": 1, "unit": "TL"},
+        {"id": "salt", "name": "Salz"},
+        {"id": "pepper", "name": "Pfeffer"}
+      ]
+    },
+    {
+      "day": 4,
+      "name": "Radieschen-Salat",
+      "items": [
+        {"id": "radish", "name": "Radieschen", "amount": 0.5, "unit": "Bund"},
+        {"id": "cucumber", "name": "Gurke", "amount": 0.5},
+        {"id": "cherry-tomato", "name": "Kirschtomaten", "amount": 80, "unit": "g"},
+        {"id": "lettuce", "name": "Salat", "amount": 0.25},
+        {"id": "sunflower-seeds", "name": "Sonnenblumenkerne", "amount": 1, "unit": "EL"},
+        {"id": "cooking-oil", "name": "Öl", "amount": 1, "unit": "EL"},
+        {"id": "vinegar", "name": "Heller Balsamico", "amount": 1, "unit": "EL"},
+        {"id": "mustard", "name": "Senf", "amount": 0.5, "unit": "TL"},
+        {"id": "honey", "name": "Honig", "amount": 1, "unit": "TL"}
+      ]
+    },
+    {
+      "day": 5,
+      "name": "Overnight Oats",
+      "items": [
+        {"id": "rolled-oats", "name": "Haferflocken", "amount": 50, "unit": "g"},
+        {"id": "skyr", "name": "Skyr", "amount": 150, "unit": "g"},
+        {"id": "milk", "name": "Milch", "amount": 100, "unit": "ml"},
+        {"id": "frozen-berries", "name": "TK-Beeren", "amount": 80, "unit": "g"}
+      ]
+    },
+    {
+      "day": 5,
+      "name": "Wrap-Pizza",
+      "items": [
+        {"id": "tortilla", "name": "Weizentortillas", "amount": 1},
+        {"id": "passata", "name": "Passierte Tomaten", "amount": 2, "unit": "EL"},
+        {"id": "oregano", "name": "Oregano", "amount": 1, "unit": "TL"},
+        {"id": "ham", "name": "Kochschinken", "amount": 40, "unit": "g"},
+        {"id": "bell-pepper", "name": "Paprika", "amount": 0.5},
+        {"id": "grated-cheese", "name": "Geriebener Mozzarella", "amount": 30, "unit": "g"}
+      ]
+    },
+    {
+      "day": 6,
+      "name": "Rührei mit Vollkornbrot",
+      "items": [
+        {"id": "egg", "name": "Eier", "amount": 3},
+        {"id": "milk", "name": "Milch", "amount": 30, "unit": "ml"},
+        {"id": "wholegrain-bread", "name": "Vollkornbrot", "amount": 2, "unit": "Scheiben"}
+      ]
+    },
+    {
+      "day": 7,
+      "name": "Omelett",
+      "items": [
+        {"id": "egg", "name": "Eier", "amount": 3},
+        {"id": "milk", "name": "Milch", "amount": 30, "unit": "ml"},
+        {"id": "ham", "name": "Kochschinken", "amount": 40, "unit": "g"},
+        {"id": "bell-pepper", "name": "Paprika", "amount": 0.5},
+        {"id": "mushrooms", "name": "Champignons", "amount": 60, "unit": "g"},
+        {"id": "grated-cheese", "name": "Geriebener Käse", "amount": 20, "unit": "g"}
+      ]
+    },
+    {
+      "day": 7,
+      "name": "Lachs mit Reis und grünen Bohnen",
+      "items": [
+        {"id": "frozen-salmon", "name": "TK-Lachsfilet", "amount": 1, "unit": "Stück"},
+        {"id": "lemon", "name": "Zitrone", "amount": 0.25},
+        {"id": "rice", "name": "Reis", "amount": 70, "unit": "g"},
+        {"id": "frozen-green-beans", "name": "TK-Bohnen", "amount": 150, "unit": "g"}
+      ]
+    }
+  ]
+}
