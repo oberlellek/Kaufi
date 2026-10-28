@@ -50,7 +50,8 @@ jobs:
           KAUFI_KEY_PASSWORD: ${{ secrets.KAUFI_KEY_PASSWORD }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          flutter build apk --release --build-name="$version" --build-number="${{ github.run_number }}"
+          # Same version code scheme as CI, see ci.yml.
+          flutter build apk --release --build-name="$version" --build-number="$(( $(date +%s) / 60 ))"
           mv build/app/outputs/flutter-apk/app-release.apk "kaufi-$version.apk"
 
       - uses: softprops/action-gh-release@v2

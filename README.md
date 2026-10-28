@@ -78,7 +78,7 @@ Dann im Repository unter *Settings → Secrets and variables → Actions* diese 
 | `KAUFI_KEY_ALIAS` | `kaufi` |
 | `KAUFI_KEY_PASSWORD` | Passwort des Schlüssels |
 
-Ein Tag wie `v0.1.0` baut dann eine signierte APK und veröffentlicht sie als Release. Ohne Secrets wird mit einem Debug-Schlüssel signiert. Lokal geht dasselbe über `android/key.properties` (`storeFile` relativ zu `android/app`, `storePassword`, `keyAlias`, `keyPassword`).
+Ein Tag wie `v0.1.0` baut dann eine signierte APK und veröffentlicht sie als Release. Auch die Test-APKs aus der CI werden damit signiert und lassen sich als Update übereinander installieren. Ohne Secrets wird mit einem Debug-Schlüssel signiert. Lokal geht dasselbe über `android/key.properties` (`storeFile` relativ zu `android/app`, `storePassword`, `keyAlias`, `keyPassword`).
 
 ## Ideen für später
 
