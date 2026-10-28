@@ -36,6 +36,11 @@ void main() {
     expect(find.textContaining('1 von 48'), findsOneWidget);
     expect(find.text('Fertig'), findsOneWidget);
     expect(c.kaufi.pantry('mushrooms'), 250);
+    // The name flies into the basket and is gone once it lands.
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('flight-Champignons')), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('flight-Champignons')), findsNothing);
 
     // The basket is below the open items.
     await tester.scrollUntilVisible(find.text('Im Korb · 1'), 400);
@@ -76,21 +81,75 @@ void main() {
     expect(c.state.trip, isEmpty);
   });
 
-  testWidgets('swipe left marks an item as already at home', (tester) async {
+  testWidgets('pulling an item towards the hand marks it as already at home', (tester) async {
     final c = controller();
     c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
         replace: true);
     await tester.pumpWidget(KaufiApp(controller: c));
+
+    // Away from the (right) hand, or not clearly sideways: nothing happens.
     await tester.drag(find.text('Champignons'), const Offset(-500, 0));
     await tester.pumpAndSettle();
-    expect(find.text('Champignons'), findsNothing);
-    expect(find.textContaining('als vorrätig gemerkt'), findsOneWidget);
-    expect(c.kaufi.pantry('mushrooms'), 250);
-    expect(find.byType(SnackBar), findsOneWidget);
-    // The undo hint goes away on its own.
-    await tester.pump(const Duration(seconds: 5));
+    await tester.drag(find.text('Champignons'), const Offset(150, -120));
     await tester.pumpAndSettle();
-    expect(find.byType(SnackBar), findsNothing);
+    expect(c.kaufi.pantry('mushrooms'), 0);
+
+    await tester.drag(find.text('Champignons'), const Offset(500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Champignons'), findsNothing);
+    expect(c.kaufi.pantry('mushrooms'), 250);
+    expect(find.byType(SnackBar), findsNothing, reason: 'the undo button replaces the hint');
+
+    await tester.tap(find.byTooltip('Rückgängig: Champignons vorrätig'));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 0);
+    expect(find.text('Champignons'), findsOneWidget);
+    expect(find.byTooltip('Nichts zum Rückgängigmachen'), findsOneWidget);
+  });
+
+  testWidgets('left-handed users pull to the left', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    await tester.pumpWidget(KaufiApp(controller: c));
+
+    await tester.tap(find.byTooltip('Menü'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Einstellungen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Links'));
+    await tester.pumpAndSettle();
+    expect(c.state.leftHanded, isTrue);
+    await tester.tapAt(const Offset(200, 40)); // close the sheet
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('Champignons'), const Offset(500, 0));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 0);
+    await tester.drag(find.text('Champignons'), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 250);
+  });
+
+  testWidgets('the undo button takes back the last steps', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    await tester.pumpWidget(KaufiApp(controller: c));
+    await tester.tap(find.text('Champignons'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cherrytomaten'));
+    await tester.pumpAndSettle();
+    expect(c.state.trip, hasLength(2));
+
+    await tester.tap(find.byTooltip('Rückgängig: Cherrytomaten in den Korb'));
+    await tester.pumpAndSettle();
+    expect(c.state.trip.map((t) => t.key), ['mushrooms']);
+    await tester.tap(find.byTooltip('Rückgängig: Champignons in den Korb'));
+    await tester.pumpAndSettle();
+    expect(c.state.trip, isEmpty);
+    expect(c.state.route, isEmpty, reason: 'the learned order is taken back too');
+    expect(find.text('Fertig'), findsNothing);
   });
 
   testWidgets('the meal button opens a list to filter by meal', (tester) async {
@@ -130,8 +189,9 @@ void main() {
 
     // Onions are bought loose, garlic by the bulb.
     await tester.tap(find.text('Zwiebeln'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Knoblauch'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(c.kaufi.pantry('onion'), 1);
     expect(c.kaufi.pantry('garlic'), 10);
   });
@@ -142,7 +202,7 @@ void main() {
         replace: true);
     await tester.pumpWidget(KaufiApp(controller: c));
     await tester.tap(find.text('Champignons'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(c.kaufi.pantry('mushrooms'), 250);
 
     await tester.tap(find.text('Fertig'));
@@ -182,6 +242,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(c.kaufi.pantry('mushrooms'), 0);
     expect(c.shoppingList.open.any((i) => i.key == 'mushrooms'), isTrue);
-    expect(find.text('Champignons steht wieder auf der Liste'), findsOneWidget);
+    await tester.tap(find.byTooltip('Rückgängig: Champignons wieder auf der Liste'));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 500);
   });
 }

@@ -96,6 +96,7 @@ class AppState {
     List<TripEntry>? trip,
     this.tripLastActivity,
     this.shoppingDays = 7,
+    this.leftHanded = false,
   })  : meals = meals ?? [],
         customDefs = customDefs ?? {},
         pantry = pantry ?? {},
@@ -126,6 +127,9 @@ class AppState {
   /// How many days ahead to shop for.
   int shoppingDays;
 
+  /// Which hand holds the phone while shopping. Swipes go towards it.
+  bool leftHanded;
+
   factory AppState.fromJson(Map<String, dynamic> j) => AppState(
         meals: [
           for (final m in j['meals'] as List? ?? const [])
@@ -146,6 +150,7 @@ class AppState {
             ? null
             : DateTime.tryParse(j['tripLastActivity'] as String),
         shoppingDays: j['shoppingDays'] as int? ?? 7,
+        leftHanded: j['leftHanded'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -159,6 +164,7 @@ class AppState {
         if (tripLastActivity != null)
           'tripLastActivity': tripLastActivity!.toIso8601String(),
         'shoppingDays': shoppingDays,
+        if (leftHanded) 'leftHanded': true,
       };
 }
 

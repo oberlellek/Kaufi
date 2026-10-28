@@ -3,25 +3,29 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-/// A row that can be swiped left or right to trigger an action.
+/// A row that can be pulled sideways in one direction to trigger an action.
 ///
-/// Unlike [Dismissible] it ignores swipes that start at the screen edge, where
-/// Android's back gesture lives: otherwise going back would also mark an item.
+/// Unlike [Dismissible] it is careful not to steal other gestures: swipes
+/// that start at the screen edge belong to Android's back gesture, and drags
+/// that are not clearly sideways, like a thumb scrolling in an arc, are left
+/// to the list.
 class SwipeRow extends StatefulWidget {
   const SwipeRow({
     super.key,
     required this.child,
-    required this.rightBackground,
-    required this.leftBackground,
-    this.onSwipeRight,
-    this.onSwipeLeft,
+    required this.background,
+    required this.onSwipe,
+    this.toRight = true,
   });
 
   final Widget child;
-  final Widget rightBackground;
-  final Widget leftBackground;
-  final VoidCallback? onSwipeRight;
-  final VoidCallback? onSwipeLeft;
+
+  /// Shown behind the row while it is pulled.
+  final Widget background;
+  final VoidCallback onSwipe;
+
+  /// Whether the row is pulled towards the right edge, or the left.
+  final bool toRight;
 
   /// Swipes starting this close to the left or right edge are left to the
   /// system, in addition to whatever the system reports as gesture area.
@@ -40,6 +44,8 @@ class _SwipeRowState extends State<SwipeRow> with SingleTickerProviderStateMixin
   double _dx = 0;
   double _backFrom = 0;
   bool _tracking = false;
+
+  double get _sign => widget.toRight ? 1 : -1;
 
   @override
   void dispose() {
@@ -63,42 +69,43 @@ class _SwipeRowState extends State<SwipeRow> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    return GestureDetector(
+    return RawGestureDetector(
       behavior: HitTestBehavior.opaque,
-      // Report the touch-down position, not where the drag was recognised.
-      dragStartBehavior: DragStartBehavior.down,
-      onHorizontalDragStart: (d) {
-        _back.stop();
-        _tracking = !_startsAtEdge(d.globalPosition);
-      },
-      onHorizontalDragUpdate: (d) {
-        if (!_tracking) return;
-        var dx = _dx + d.delta.dx;
-        if (widget.onSwipeRight == null) dx = math.min(dx, 0);
-        if (widget.onSwipeLeft == null) dx = math.max(dx, 0);
-        setState(() => _dx = dx);
-      },
-      onHorizontalDragEnd: (d) {
-        if (!_tracking) return;
-        _tracking = false;
-        final v = d.primaryVelocity ?? 0;
-        final far = _dx.abs() > width * 0.35;
-        final fling = v.abs() > 900 && v.sign == _dx.sign && _dx.abs() > 24;
-        final dx = _dx;
-        _settle();
-        if (far || fling) {
-          if (dx > 0) widget.onSwipeRight?.call();
-          if (dx < 0) widget.onSwipeLeft?.call();
-        }
-      },
-      onHorizontalDragCancel: () {
-        _tracking = false;
-        _settle();
+      gestures: {
+        _SidewaysDragRecognizer: GestureRecognizerFactoryWithHandlers<_SidewaysDragRecognizer>(
+          () => _SidewaysDragRecognizer(debugOwner: this),
+          (r) => r
+            ..sign = _sign
+            // Report the touch-down position, not where the drag was recognised.
+            ..dragStartBehavior = DragStartBehavior.down
+            ..onStart = (d) {
+              _back.stop();
+              _tracking = !_startsAtEdge(d.globalPosition);
+            }
+            ..onUpdate = (d) {
+              if (!_tracking) return;
+              final dx = _dx + d.delta.dx;
+              setState(() => _dx = widget.toRight ? math.max(dx, 0) : math.min(dx, 0));
+            }
+            ..onEnd = (d) {
+              if (!_tracking) return;
+              _tracking = false;
+              final v = (d.primaryVelocity ?? 0) * _sign;
+              final pulled = _dx * _sign;
+              final far = pulled > width * 0.35;
+              final fling = v > 900 && pulled > 24;
+              _settle();
+              if (far || fling) widget.onSwipe();
+            }
+            ..onCancel = () {
+              _tracking = false;
+              _settle();
+            },
+        ),
       },
       child: Stack(
         children: [
-          if (_dx != 0)
-            Positioned.fill(child: _dx > 0 ? widget.rightBackground : widget.leftBackground),
+          if (_dx != 0) Positioned.fill(child: widget.background),
           Transform.translate(
             offset: Offset(_dx, 0),
             child: Material(color: Theme.of(context).colorScheme.surface, child: widget.child),
@@ -106,5 +113,37 @@ class _SwipeRowState extends State<SwipeRow> with SingleTickerProviderStateMixin
         ],
       ),
     );
+  }
+}
+
+/// A horizontal drag that only wins against the list's scrolling when it
+/// goes in the allowed direction and is at least twice as wide as it is tall.
+class _SidewaysDragRecognizer extends HorizontalDragGestureRecognizer {
+  _SidewaysDragRecognizer({super.debugOwner});
+
+  /// 1 for drags to the right, -1 for drags to the left.
+  double sign = 1;
+
+  Offset _down = Offset.zero;
+  Offset _last = Offset.zero;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    _down = event.position;
+    _last = event.position;
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent) _last = event.position;
+    super.handleEvent(event);
+  }
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(PointerDeviceKind pointerDeviceKind, double? deviceTouchSlop) {
+    if (!super.hasSufficientGlobalDistanceToAccept(pointerDeviceKind, deviceTouchSlop)) return false;
+    final moved = _last - _down;
+    return moved.dx * sign > 0 && moved.dx.abs() > 2 * moved.dy.abs();
   }
 }

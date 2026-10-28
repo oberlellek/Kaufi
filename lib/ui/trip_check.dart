@@ -16,8 +16,6 @@ Future<void> showTripCheck(BuildContext context) async {
   );
   if (done != true || !context.mounted) return;
   KaufiScope.read(context).finishTrip();
-  ScaffoldMessenger.of(context)
-      .showSnackBar(const SnackBar(content: Text('Einkauf abgeschlossen. Alles ist im Vorrat.')));
 }
 
 class _TripCheck extends StatelessWidget {

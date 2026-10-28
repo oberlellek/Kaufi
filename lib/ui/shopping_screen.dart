@@ -6,6 +6,7 @@ import '../logic/kaufi.dart';
 import '../model/app_state.dart';
 import 'amount_sheet.dart';
 import 'app.dart';
+import 'basket_flight.dart';
 import 'import_flow.dart';
 import 'meal_filter.dart';
 import 'menu_sheet.dart';
@@ -17,8 +18,8 @@ String formatEuro(double v) => v.round().toString();
 /// The home screen: what to buy now, in the order of the store.
 ///
 /// Built for one hand: everything interactive is either a whole row (tap to
-/// put it into the basket, swipe right for the same, swipe left for "I have it
-/// already") or sits in the bottom bar within reach of the thumb.
+/// put it into the basket, pull it towards the hand for "I have it already")
+/// or sits in the bottom bar within reach of the thumb, including undo.
 class ShoppingScreen extends StatelessWidget {
   const ShoppingScreen({super.key});
 
@@ -204,42 +205,29 @@ class _OpenRow extends StatelessWidget {
       if (forMeal == null && item.usedIn.isNotEmpty) 'für ${item.usedIn.join(', ')}',
     ].join(' · ');
 
+    // Pulled towards the hand that holds the phone.
+    final toRight = !c.state.leftHanded;
     return SwipeRow(
-      rightBackground: _SwipeBackground(
-        color: scheme.primaryContainer,
-        onColor: scheme.onPrimaryContainer,
-        icon: Icons.shopping_basket_outlined,
-        label: 'In den Korb',
-        alignment: Alignment.centerLeft,
-      ),
-      leftBackground: _SwipeBackground(
+      toRight: toRight,
+      background: _SwipeBackground(
         color: scheme.tertiaryContainer,
         onColor: scheme.onTertiaryContainer,
         icon: Icons.home_outlined,
         label: 'Hab ich schon',
-        alignment: Alignment.centerRight,
+        alignment: toRight ? Alignment.centerLeft : Alignment.centerRight,
       ),
-      onSwipeRight: () {
+      onSwipe: () {
         HapticFeedback.lightImpact();
-        c.check(item.key);
-      },
-      onSwipeLeft: () {
-        HapticFeedback.lightImpact();
-        final added = c.markAtHome(item.key);
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(SnackBar(
-          content: Text('${item.def.name}: als vorrätig gemerkt'),
-          // With an action, snack bars stay until dismissed unless told otherwise.
-          persist: false,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(label: 'Rückgängig', onPressed: () => c.undoMarkAtHome(item.key, added)),
-        ));
+        c.markAtHome(item.key);
       },
       child: InkWell(
         onTap: () {
           HapticFeedback.selectionClick();
+          final box = context.findRenderObject() as RenderBox;
+          final from = box.localToGlobal(Offset(box.size.width * 0.35, box.size.height / 2));
+          final overlay = Overlay.of(context);
           c.check(item.key);
+          flyToBasket(overlay, item.def.name, from);
         },
         onLongPress: () => showAmountSheet(context, item),
         child: ConstrainedBox(
@@ -340,18 +328,8 @@ class _CoveredState extends State<_Covered> {
   var _open = false;
 
   void _notThere(ShoppingItem item) {
-    final c = KaufiScope.read(context);
-    final before = c.kaufi.pantry(item.key);
     HapticFeedback.lightImpact();
-    c.setPantry(item.key, 0);
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(
-      content: Text('${item.def.name} steht wieder auf der Liste'),
-      persist: false,
-      duration: const Duration(seconds: 4),
-      action: SnackBarAction(label: 'Rückgängig', onPressed: () => c.setPantry(item.key, before)),
-    ));
+    KaufiScope.read(context).notAtHome(item.key);
   }
 
   @override
@@ -538,7 +516,8 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KaufiScope.of(context);
     final theme = Theme.of(context);
-    final tripActive = c.state.trip.isNotEmpty;
+    final inBasket = c.state.trip.length;
+    final undo = c.undoLabel;
     return Material(
       color: theme.colorScheme.surfaceContainer,
       child: SafeArea(
@@ -554,14 +533,36 @@ class _BottomBar extends StatelessWidget {
                 onPressed: () => showMenuSheet(context),
                 icon: const Icon(Icons.menu),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               const Expanded(child: DaysControl()),
-              if (tripActive) ...[
-                const SizedBox(width: 8),
+              IconButton(
+                iconSize: 26,
+                style: IconButton.styleFrom(minimumSize: const Size(48, 56)),
+                tooltip: undo == null ? 'Nichts zum Rückgängigmachen' : 'Rückgängig: $undo',
+                onPressed: undo == null
+                    ? null
+                    : () {
+                        HapticFeedback.selectionClick();
+                        c.undo();
+                      },
+                icon: const Icon(Icons.undo),
+              ),
+              if (inBasket > 0) ...[
+                const SizedBox(width: 4),
                 FilledButton(
-                  style: FilledButton.styleFrom(minimumSize: const Size(72, 56)),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 56),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
                   onPressed: () => showTripCheck(context),
-                  child: const Text('Fertig'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      BasketIcon(count: inBasket),
+                      const SizedBox(width: 10),
+                      const Text('Fertig'),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -611,27 +612,38 @@ class _DaysControlState extends State<DaysControl> {
         children: [
           IconButton(
             iconSize: 28,
-            style: IconButton.styleFrom(minimumSize: const Size(52, 56)),
+            style: IconButton.styleFrom(minimumSize: const Size(44, 56)),
             tooltip: 'Einen Tag weniger',
             onPressed: days > 1 ? () => _change(-1) : null,
             icon: const Icon(Icons.remove),
           ),
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(days == 1 ? 'Nur heute' : 'Für $days Tage',
-                    style: theme.textTheme.titleMedium, maxLines: 1),
-                Text(days == 1 ? formatDayShort(until) : 'bis ${formatDayShort(until)}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    maxLines: 1),
-              ],
+            // Narrow phones with a full basket: shorten, then shrink.
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final title = days == 1 ? 'Nur heute' : (box.maxWidth < 90 ? '$days Tage' : 'Für $days Tage');
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(title, style: theme.textTheme.titleMedium, maxLines: 1),
+                    ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(days == 1 ? formatDayShort(until) : 'bis ${formatDayShort(until)}',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          maxLines: 1),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           IconButton(
             iconSize: 28,
-            style: IconButton.styleFrom(minimumSize: const Size(52, 56)),
+            style: IconButton.styleFrom(minimumSize: const Size(44, 56)),
             tooltip: 'Einen Tag mehr',
             onPressed: days < 30 ? () => _change(1) : null,
             icon: const Icon(Icons.add),

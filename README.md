@@ -20,15 +20,16 @@ Alles bleibt auf dem Gerät. Kein Konto, keine Werbung, und die Release-App hat 
 
 | Geste | Wirkung |
 | --- | --- |
-| Antippen oder nach rechts wischen | In den Korb. Nochmal antippen holt es zurück. |
-| Nach links wischen | „Hab ich schon“: Kaufi nimmt an, dass genug zu Hause ist, bei abgepackten Sachen mindestens eine Packung. |
+| Antippen | In den Korb. Der Name fliegt kurz in den Korb unten rechts. Im Korb nochmal antippen holt es zurück. |
+| Zur Hand hin ziehen, bei Rechtshändern nach rechts | „Hab ich schon“: Kaufi nimmt an, dass genug zu Hause ist, bei abgepackten Sachen mindestens eine Packung. Die Hand stellst du unter Menü → Einstellungen ein. |
+| Rückgängig-Pfeil unten | Nimmt die letzten Schritte zurück, einen nach dem anderen. |
 | Lange drücken | Eintragen, wie viel du wirklich nimmst. Kaufi merkt sich, wie du die Zutat kaufst. |
 | − / + unten, oder seitlich über die Tage wischen | Für wie viele Tage du einkaufst. |
 | Gerichte-Knopf | Nur die Zutaten eines Gerichts zeigen. Nochmal antippen oder „Alle Zutaten“ wählen hebt den Filter auf. |
 | „Fertig“ | Zeigt einmal, was in den Vorrat kommt. Stimmt eine Menge nicht, tippst du drauf, sonst auf „Passt“. Ohne Abhaken endet ein Einkauf nach vier Stunden von selbst. |
 | „Hast du laut Kaufi noch“ ganz unten | Was du in den nächsten Tagen brauchst, aber laut Vorrat nicht kaufen musst. Antippen, wenn es doch fehlt. |
 
-Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von Android und lösen in der Liste nichts aus.
+Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von Android und lösen in der Liste nichts aus. Wischen, die eher nach oben oder unten gehen, scrollen nur.
 
 ### Was Kaufi im Hintergrund macht
 

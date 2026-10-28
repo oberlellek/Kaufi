@@ -79,6 +79,8 @@ class AppController extends ChangeNotifier {
   /// Call when the app comes back to the foreground: a new day may have begun.
   void refresh() {
     if (kaufi.settle(today, now)) {
+      // Meals were eaten or the trip timed out: older steps no longer apply.
+      _undo.clear();
       _changed();
     } else {
       notifyListeners();
@@ -92,12 +94,39 @@ class AppController extends ChangeNotifier {
     _changed();
   }
 
+  void setLeftHanded(bool value) {
+    if (value == state.leftHanded) return;
+    state.leftHanded = value;
+    _changed();
+  }
+
+  /// Steps taken in the shopping list, newest last, for the undo button.
+  final _undo = <_Snapshot>[];
+
+  /// What the undo button would take back, or null when there is nothing.
+  String? get undoLabel => _undo.isEmpty ? null : _undo.last.label;
+
+  void _remember(String label) {
+    _undo.add(_Snapshot(state, label));
+    if (_undo.length > 30) _undo.removeAt(0);
+  }
+
+  void undo() {
+    if (_undo.isEmpty) return;
+    _undo.removeLast().restore(state);
+    _changed();
+  }
+
+  String _name(String key) => kaufi.def(key).name;
+
   void check(String key, {double? amount}) {
+    _remember('${_name(key)} in den Korb');
     kaufi.check(key, today, now, amount: amount);
     _changed();
   }
 
   void uncheck(String key) {
+    _remember('${_name(key)} aus dem Korb');
     kaufi.uncheck(key, now);
     _changed();
   }
@@ -105,27 +134,34 @@ class AppController extends ChangeNotifier {
   /// Puts an item into the basket, or corrects it there, with the amount the
   /// user picked. Kaufi learns from it how the item is bought.
   void setBought(String key, double amount) {
+    _remember('Menge von ${_name(key)}');
     kaufi.setBought(key, amount, today, now);
     _changed();
   }
 
-  double markAtHome(String key) {
-    final added = kaufi.markAtHome(key, today);
+  void markAtHome(String key) {
+    _remember('${_name(key)} vorrätig');
+    kaufi.markAtHome(key, today);
     _changed();
-    return added;
   }
 
-  void undoMarkAtHome(String key, double added) {
-    kaufi.undoMarkAtHome(key, added);
+  /// Kaufi thought [key] was at home, but it is not: back on the list.
+  void notAtHome(String key) {
+    _remember('${_name(key)} wieder auf der Liste');
+    kaufi.setPantry(key, 0);
     _changed();
   }
 
   void finishTrip() {
+    _remember('Einkauf abschließen');
     kaufi.finishTrip();
     _changed();
   }
 
+  /// A correction in the pantry screen. It overrides what the shopping steps
+  /// before it did, so those can no longer be undone.
   void setPantry(String key, double amount) {
+    _undo.clear();
     kaufi.setPantry(key, amount);
     _changed();
   }
@@ -150,8 +186,44 @@ class AppController extends ChangeNotifier {
 
   /// Returns how many meals were skipped because they lie in the past.
   int applyImport(PlanImport imp, Day start, {required bool replace}) {
+    _undo.clear();
     final skipped = kaufi.applyImport(imp, start, today, replace: replace);
     _changed();
     return skipped;
+  }
+}
+
+/// What a shopping step can change, so the undo button can restore it.
+/// Meals and settings are left out on purpose: undoing "in den Korb" must not
+/// undo a meal moved in the meantime.
+class _Snapshot {
+  _Snapshot(AppState s, this.label)
+      : pantry = Map.of(s.pantry),
+        packOverrides = Map.of(s.packOverrides),
+        route = List.of(s.route),
+        trip = List.of(s.trip),
+        tripLastActivity = s.tripLastActivity;
+
+  final String label;
+  final Map<String, double> pantry;
+  final Map<String, double> packOverrides;
+  final List<String> route;
+  final List<TripEntry> trip;
+  final DateTime? tripLastActivity;
+
+  void restore(AppState s) {
+    s.pantry
+      ..clear()
+      ..addAll(pantry);
+    s.packOverrides
+      ..clear()
+      ..addAll(packOverrides);
+    s.route
+      ..clear()
+      ..addAll(route);
+    s.trip
+      ..clear()
+      ..addAll(trip);
+    s.tripLastActivity = tripLastActivity;
   }
 }
