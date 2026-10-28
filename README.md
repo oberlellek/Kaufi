@@ -6,7 +6,7 @@ Alles bleibt auf dem Gerät. Kein Konto, keine Werbung, und die Release-App hat 
 
 <p>
   <img src="docs/screenshots/einkaufsliste.png" width="230" alt="Einkaufsliste">
-  <img src="docs/screenshots/packung.png" width="230" alt="Menge ändern">
+  <img src="docs/screenshots/packung.png" width="230" alt="Menge korrigieren">
   <img src="docs/screenshots/essensplan.png" width="230" alt="Essensplan">
 </p>
 
@@ -22,10 +22,11 @@ Alles bleibt auf dem Gerät. Kein Konto, keine Werbung, und die Release-App hat 
 | --- | --- |
 | Antippen oder nach rechts wischen | In den Korb. Nochmal antippen holt es zurück. |
 | Nach links wischen | „Hab ich schon“: Kaufi nimmt an, dass genug zu Hause ist, bei abgepackten Sachen mindestens eine Packung. |
-| Lange drücken | Eintragen, wie viel du wirklich nimmst. Bei abgepackten Sachen Packungsgröße und Anzahl, die Packungsgröße merkt sich Kaufi. |
+| Lange drücken | Eintragen, wie viel du wirklich nimmst. Kaufi merkt sich, wie du die Zutat kaufst. |
 | − / + unten, oder seitlich über die Tage wischen | Für wie viele Tage du einkaufst. |
 | Gerichte-Knopf | Nur die Zutaten eines Gerichts zeigen. Nochmal antippen oder „Alle Zutaten“ wählen hebt den Filter auf. |
-| „Fertig“ | Einkauf abschließen. Passiert nach vier Stunden ohne Abhaken auch von selbst. |
+| „Fertig“ | Zeigt einmal, was in den Vorrat kommt. Stimmt eine Menge nicht, tippst du drauf, sonst auf „Passt“. Ohne Abhaken endet ein Einkauf nach vier Stunden von selbst. |
+| „Hast du laut Kaufi noch“ ganz unten | Was du in den nächsten Tagen brauchst, aber laut Vorrat nicht kaufen musst. Antippen, wenn es doch fehlt. |
 
 Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von Android und lösen in der Liste nichts aus.
 
@@ -33,6 +34,7 @@ Wischen, die direkt am Bildschirmrand beginnen, gehören der Zurück-Geste von A
 
 - **Reihenfolge lernen.** Die Reihenfolge, in der du Zutaten zum ersten Mal abhakst, wird zu ihrer Reihenfolge in der Liste. Neue Zutaten landen hinter der, die du davor abgehakt hast. Was noch nie gekauft wurde, steht neben Zutaten aus derselben Abteilung.
 - **Vorrat führen.** Was du kaufst, kommt in den Vorrat. Lose Ware wie Zwiebeln, Äpfel oder Kartoffeln zählt genau, bei abgepackten Sachen rechnet Kaufi mit ganzen Packungen: Brauchst du acht Eier, kommen zehn in den Vorrat. Ist ein Tag vorbei, zieht Kaufi ab, was laut Plan gegessen wurde. Übrig gebliebene Eier stehen also nächste Woche nicht wieder auf der Liste. Unter „Vorrat“ kannst du korrigieren.
+- **Aus Korrekturen lernen.** Kaufi fragt nicht bei jeder Zutat, sondern merkt sich jede Korrektur als neue Annahme. Nimmst du Eier im 6er, rechnet Kaufi danach mit 6ern. Kaufst du Zwiebeln im Netz, mit Netzen. Nimmst du genau, was fehlt, rechnet Kaufi bei dieser Zutat ab dann genau. Mehr von der üblichen Packung, etwa zwei Flaschen Öl im Angebot, ändert nichts.
 - **Plan anpassen.** Unter „Essensplan“ hältst du ein Gericht gedrückt und ziehst es auf einen anderen Tag, oder du schiebst ab einem Tag alles nach hinten. Die Einkaufsliste rechnet sich neu.
 - **Preis schätzen.** Der Katalog hat grobe Preisspannen pro Packung, die Liste zeigt die Summe.
 

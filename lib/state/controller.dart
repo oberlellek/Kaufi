@@ -102,22 +102,11 @@ class AppController extends ChangeNotifier {
     _changed();
   }
 
-  /// Puts an item into the basket (or corrects it) with the amount the user
-  /// picked.
-  void buyAmount(String key, double amount) {
-    if (state.trip.any((t) => t.key == key)) {
-      kaufi.changeBought(key, amount, now);
-    } else {
-      kaufi.check(key, today, now, amount: amount);
-    }
+  /// Puts an item into the basket, or corrects it there, with the amount the
+  /// user picked. Kaufi learns from it how the item is bought.
+  void setBought(String key, double amount) {
+    kaufi.setBought(key, amount, today, now);
     _changed();
-  }
-
-  /// Like [buyAmount] with a package size the user picked; the size is
-  /// remembered for next time.
-  void buyPacks(String key, double packSize, int count) {
-    kaufi.rememberPack(key, packSize);
-    buyAmount(key, packSize * count);
   }
 
   double markAtHome(String key) {

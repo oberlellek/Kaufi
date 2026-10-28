@@ -11,10 +11,6 @@ const _eps = 1e-6;
 /// A shopping trip counts as finished when nothing was checked for this long.
 const tripTimeout = Duration(hours: 4);
 
-/// Whether [def] is bought in exactly the amount missing rather than in whole
-/// packages of [pack].
-bool buysExactly(IngredientDef def, double? pack) => def.loose || pack == null || pack <= 0;
-
 /// Rounds up to what can be bought: whole pieces, whole grams or millilitres.
 double roundUpToWhole(double amount) => math.max(0, (amount - _eps).ceil()).toDouble();
 
@@ -24,6 +20,24 @@ double roundUpToWhole(double amount) => math.max(0, (amount - _eps).ceil()).toDo
 String formatNeed(IngredientDef def, double amount, {bool whole = true}) {
   if (def.unit != Dim.count && amount < 5) return 'etwas';
   return def.format(whole ? roundUpToWhole(amount) : amount);
+}
+
+/// [amount] as bought in packages of [pack]: "1 Knolle", "2 × 400 g", or
+/// just "3 Stück" when that reads better.
+String formatBought(IngredientDef def, double? pack, double amount) {
+  if (pack != null && pack > 0) {
+    final p = (amount / pack - _eps).ceil();
+    if (p >= 1 && (p * pack - amount).abs() < 0.01) {
+      final label = def.packLabel;
+      if (label != null && (pack - (def.pack ?? -1)).abs() < _eps) return '$p ${p == 1 ? label.$1 : label.$2}';
+      // One piece per package reads better as a plain count.
+      if (!(def.unit == Dim.count && pack == 1)) {
+        final size = def.format(pack);
+        return p == 1 ? size : '$p × $size';
+      }
+    }
+  }
+  return def.format(amount);
 }
 
 class ShoppingItem {
@@ -48,6 +62,9 @@ class ShoppingItem {
   /// What checking off puts into the basket (unchecked) or what was bought
   /// (checked): whole packages, or exactly what is missing for loose items.
   final double buy;
+
+  /// How the item is bought: the size of one package, or null for exactly
+  /// what is missing.
   final double? pack;
   final TripEntry? tripEntry;
 
@@ -57,36 +74,16 @@ class ShoppingItem {
   bool get checked => tripEntry != null;
   String get key => def.id;
   double get missing => math.max(0, need - atHome);
-  bool get exact => buysExactly(def, pack);
+  bool get exact => pack == null;
 
-  int? get packs => pack == null ? null : (buy / pack! - _eps).ceil().clamp(1, 999);
-
-  double? get priceMin => _price(def.priceMin);
-  double? get priceMax => _price(def.priceMax);
-
-  double? _price(double? perPack) {
-    if (!def.hasPrice || perPack == null) return null;
-    if (def.loose) return buy / def.pack! * perPack;
-    return packs == null ? null : packs! * perPack;
-  }
+  double? get priceMin => def.hasPrice ? buy / def.pack! * def.priceMin! : null;
+  double? get priceMax => def.hasPrice ? buy / def.pack! * def.priceMax! : null;
 
   /// What is still missing: "3 Stück", "2 Zehen", "etwas".
   String get needLabel => formatNeed(def, missing);
 
   /// What is in the basket: "1 Knolle", "2 × 400 g", "3 Stück".
-  String get buyLabel {
-    final p = packs;
-    if (!exact && p != null && (p * pack! - buy).abs() < 0.01) {
-      final label = def.packLabel;
-      if (label != null) return '$p ${p == 1 ? label.$1 : label.$2}';
-      // One piece per package reads better as a plain count.
-      if (!(def.unit == Dim.count && pack == 1)) {
-        final size = def.format(pack!);
-        return p == 1 ? size : '$p × $size';
-      }
-    }
-    return def.format(buy);
-  }
+  String get buyLabel => formatBought(def, pack, buy);
 }
 
 class ShoppingList {
@@ -95,6 +92,7 @@ class ShoppingList {
     required this.to,
     required this.open,
     required this.checked,
+    this.covered = const [],
     this.meal,
     this.alreadyHome = 0,
   });
@@ -103,6 +101,9 @@ class ShoppingList {
   final Day to;
   final List<ShoppingItem> open;
   final List<ShoppingItem> checked;
+
+  /// Needed in the window but covered by the pantry, so not on the list.
+  final List<ShoppingItem> covered;
 
   /// Set when the list is narrowed down to one meal.
   final Meal? meal;
@@ -120,6 +121,7 @@ class ShoppingList {
       to: to,
       open: o,
       checked: c,
+      covered: covered.where((i) => keys.contains(i.key)).toList(),
       meal: meal,
       alreadyHome: keys.length - o.length - c.length,
     );
@@ -145,7 +147,13 @@ class Kaufi {
       catalog.byId(key) ??
       IngredientDef(id: key, name: key.replaceFirst(IngredientDef.customPrefix, ''), unit: Dim.count);
 
-  double? packFor(String key) => state.packOverrides[key] ?? def(key).pack;
+  /// How [key] is bought: the size of one package, or null for exactly what
+  /// is missing. Learned from corrections, see [learnPurchase].
+  double? purchaseUnit(String key) {
+    final d = def(key);
+    final p = state.packOverrides[key] ?? (d.loose ? null : d.pack);
+    return p == null || p <= 0 ? null : p;
+  }
 
   double pantry(String key) => state.pantry[key] ?? 0;
 
@@ -214,9 +222,9 @@ class Kaufi {
   /// What checking off puts into the pantry: exactly what is missing for
   /// loose items, otherwise whole packages.
   double suggestedBuy(String key, double missing) {
-    final pack = packFor(key);
-    if (buysExactly(def(key), pack)) return roundUpToWhole(missing);
-    return (missing / pack! - _eps).ceil() * pack;
+    final pack = purchaseUnit(key);
+    if (pack == null) return roundUpToWhole(missing);
+    return (missing / pack - _eps).ceil() * pack;
   }
 
   ShoppingList shoppingList(Day today) {
@@ -226,16 +234,16 @@ class Kaufi {
     final used = usage(today, days);
 
     final open = <ShoppingItem>[];
+    final covered = <ShoppingItem>[];
     for (final e in need.entries) {
       if (inTrip.containsKey(e.key)) continue;
       final missing = e.value - pantry(e.key);
-      if (missing <= _eps) continue;
-      open.add(ShoppingItem(
+      (missing <= _eps ? covered : open).add(ShoppingItem(
         def: def(e.key),
         need: e.value,
         atHome: pantry(e.key),
-        buy: suggestedBuy(e.key, missing),
-        pack: packFor(e.key),
+        buy: missing <= _eps ? 0 : suggestedBuy(e.key, missing),
+        pack: purchaseUnit(e.key),
         usedIn: used[e.key] ?? const [],
       ));
     }
@@ -247,7 +255,7 @@ class Kaufi {
           need: need[t.key] ?? 0,
           atHome: pantry(t.key),
           buy: t.amount,
-          pack: packFor(t.key),
+          pack: purchaseUnit(t.key),
           tripEntry: t,
           usedIn: used[t.key] ?? const [],
         ),
@@ -258,6 +266,7 @@ class Kaufi {
       to: today + (days - 1),
       open: sortByRoute(open),
       checked: checked,
+      covered: covered..sort((a, b) => a.def.name.compareTo(b.def.name)),
     );
   }
 
@@ -330,8 +339,57 @@ class Kaufi {
     state.tripLastActivity = now;
   }
 
-  void rememberPack(String key, double pack) {
-    if (pack > _eps) state.packOverrides[key] = pack;
+  /// The user says how much of [key] they bought. Puts it into the basket,
+  /// or corrects the amount there, and learns from it how [key] is bought.
+  void setBought(String key, double amount, Day today, DateTime now) {
+    final inTrip = state.trip.where((t) => t.key == key).firstOrNull;
+    final before = pantry(key) - (inTrip?.amount ?? 0);
+    final missing = math.max(0.0, (needs(today, state.shoppingDays)[key] ?? 0) - before);
+    learnPurchase(key, missing, amount);
+    if (inTrip != null) {
+      changeBought(key, amount, now);
+    } else {
+      check(key, today, now, amount: amount);
+    }
+  }
+
+  /// Learns how [key] is bought from [bought], entered by the user when
+  /// [missing] was needed, so that the next guess fits:
+  ///
+  /// * more of the usual packages, or less than needed: nothing to learn;
+  /// * exactly what was missing: bought loose from now on;
+  /// * anything else: a package size of its own. Of the sizes that fit
+  ///   ("12" could be one 12-pack or two 6-packs), the one closest to the
+  ///   previous guess wins.
+  void learnPurchase(String key, double missing, double bought) {
+    if (bought <= _eps || bought + _eps < missing) return;
+    final unit = purchaseUnit(key);
+    if (unit != null) {
+      final n = bought / unit;
+      if ((n - n.roundToDouble()).abs() < 0.01) return;
+    }
+    final d = def(key);
+    double? learned;
+    if ((bought - roundUpToWhole(missing)).abs() < 0.5) {
+      learned = 0;
+    } else {
+      final reference = unit ?? d.pack ?? bought;
+      for (var n = 1; n <= 12; n++) {
+        final size = bought / n;
+        // n packages were needed: one less would not have been enough.
+        if ((n - 1) * size >= missing - _eps) break;
+        if (learned == null || (math.log(size / reference)).abs() < (math.log(learned / reference)).abs()) {
+          learned = size;
+        }
+      }
+    }
+    if (learned == null) return;
+    final byDefault = d.loose ? 0.0 : (d.pack ?? 0.0);
+    if ((learned - byDefault).abs() < _eps) {
+      state.packOverrides.remove(key);
+    } else {
+      state.packOverrides[key] = learned;
+    }
   }
 
   /// "Hab ich schon": the item is at home already. Without knowing how much,
@@ -339,8 +397,8 @@ class Kaufi {
   /// come in packages. Returns the amount added so the caller can undo it.
   double markAtHome(String key, Day today) {
     final missing = math.max(0.0, (needs(today, state.shoppingDays)[key] ?? 0) - pantry(key));
-    final pack = packFor(key);
-    final add = buysExactly(def(key), pack) ? missing : math.max(missing, pack!);
+    final pack = purchaseUnit(key);
+    final add = pack == null ? missing : math.max(missing, pack);
     _addPantry(key, add);
     return add;
   }

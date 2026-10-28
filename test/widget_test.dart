@@ -135,4 +135,53 @@ void main() {
     expect(c.kaufi.pantry('onion'), 1);
     expect(c.kaufi.pantry('garlic'), 10);
   });
+
+  testWidgets('Fertig shows what goes into the pantry, corrections are learned', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    await tester.pumpWidget(KaufiApp(controller: c));
+    await tester.tap(find.text('Champignons'));
+    await tester.pump();
+    expect(c.kaufi.pantry('mushrooms'), 250);
+
+    await tester.tap(find.text('Fertig'));
+    await tester.pumpAndSettle();
+    expect(find.text('Das kommt in den Vorrat'), findsOneWidget);
+
+    // Only 120 g were needed, and that is what was taken.
+    await tester.tap(find.text('Champignons').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Was fehlt · 120 g'));
+    await tester.pump();
+    await tester.tap(find.text('Ich habe 120 g'));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 120);
+    expect(c.kaufi.purchaseUnit('mushrooms'), isNull, reason: 'bought loose from now on');
+
+    await tester.tap(find.text('Passt'));
+    await tester.pumpAndSettle();
+    expect(c.state.trip, isEmpty);
+    expect(c.kaufi.pantry('mushrooms'), 120);
+  });
+
+  testWidgets('what Kaufi thinks is at home can go back on the list', (tester) async {
+    final c = controller();
+    c.applyImport(c.parse(File('examples/beispiel-plan.json').readAsStringSync()), Day.today(now),
+        replace: true);
+    c.setPantry('mushrooms', 500);
+    await tester.pumpWidget(KaufiApp(controller: c));
+    expect(find.text('Champignons'), findsNothing);
+
+    final header = find.textContaining('Hast du laut Kaufi noch');
+    await tester.scrollUntilVisible(header, 500);
+    await tester.tap(header);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Champignons'), 300);
+    await tester.tap(find.text('Champignons'));
+    await tester.pumpAndSettle();
+    expect(c.kaufi.pantry('mushrooms'), 0);
+    expect(c.shoppingList.open.any((i) => i.key == 'mushrooms'), isTrue);
+    expect(find.text('Champignons steht wieder auf der Liste'), findsOneWidget);
+  });
 }

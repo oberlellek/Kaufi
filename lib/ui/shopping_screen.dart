@@ -10,6 +10,7 @@ import 'import_flow.dart';
 import 'meal_filter.dart';
 import 'menu_sheet.dart';
 import 'swipe_row.dart';
+import 'trip_check.dart';
 
 String formatEuro(double v) => v.round().toString();
 
@@ -60,6 +61,7 @@ class ShoppingScreen extends StatelessWidget {
             itemCount: list.checked.length,
             itemBuilder: (context, i) => _CheckedRow(item: list.checked[list.checked.length - 1 - i]),
           ),
+          if (list.covered.isNotEmpty) SliverToBoxAdapter(child: _Covered(items: list.covered)),
           const SliverToBoxAdapter(child: SizedBox(height: 96)),
         ],
       );
@@ -324,6 +326,101 @@ class _CheckedRow extends StatelessWidget {
   }
 }
 
+/// What Kaufi believes is at home, so the user can catch it when it is not.
+class _Covered extends StatefulWidget {
+  const _Covered({required this.items});
+
+  final List<ShoppingItem> items;
+
+  @override
+  State<_Covered> createState() => _CoveredState();
+}
+
+class _CoveredState extends State<_Covered> {
+  var _open = false;
+
+  void _notThere(ShoppingItem item) {
+    final c = KaufiScope.read(context);
+    final before = c.kaufi.pantry(item.key);
+    HapticFeedback.lightImpact();
+    c.setPantry(item.key, 0);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(
+      content: Text('${item.def.name} steht wieder auf der Liste'),
+      persist: false,
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(label: 'Rückgängig', onPressed: () => c.setPantry(item.key, before)),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final muted = scheme.onSurfaceVariant;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Hast du laut Kaufi noch · ${widget.items.length}',
+                      style: theme.textTheme.titleSmall?.copyWith(color: scheme.primary)),
+                ),
+                Icon(_open ? Icons.expand_less : Icons.expand_more, color: scheme.primary),
+              ],
+            ),
+          ),
+        ),
+        if (_open) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: Text('Ist etwas nicht mehr da, tipp drauf. Dann kommt es wieder auf die Liste.',
+                style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+          ),
+          for (final item in widget.items)
+            InkWell(
+              onTap: () => _notThere(item),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 56),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.home_outlined, size: 26, color: muted),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(item.def.name, style: theme.textTheme.titleMedium),
+                            if (item.usedIn.isNotEmpty)
+                              Text('für ${item.usedIn.join(', ')}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(item.def.format(item.atHome), style: theme.textTheme.bodyLarge?.copyWith(color: muted)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
 class _SwipeBackground extends StatelessWidget {
   const _SwipeBackground({
     required this.color,
@@ -463,11 +560,7 @@ class _BottomBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 FilledButton(
                   style: FilledButton.styleFrom(minimumSize: const Size(72, 56)),
-                  onPressed: () {
-                    c.finishTrip();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Einkauf abgeschlossen. Alles ist im Vorrat.')));
-                  },
+                  onPressed: () => showTripCheck(context),
                   child: const Text('Fertig'),
                 ),
               ],

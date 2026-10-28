@@ -143,13 +143,66 @@ void main() {
     expect(k.pantry('rolled-oats'), 0);
   });
 
-  test('a corrected amount can become the new package size', () {
+  group('learns from corrections how things are bought', () {
+    double buyNext(Kaufi k, String key) {
+      k.uncheck(key, now);
+      return k.shoppingList(monday).open.firstWhere((i) => i.key == key).buy;
+    }
+
+    test('a package of another size', () {
+      // Two days: 4 eggs needed, a 6-pack bought.
+      final k = withPlan(week, days: 2);
+      k.setBought('egg', 6, monday, now);
+      expect(k.pantry('egg'), 6);
+      k.state.shoppingDays = 7;
+      expect(buyNext(k, 'egg'), 12, reason: 'two 6-packs for 8 eggs');
+    });
+
+    test('exactly what was missing', () {
+      final k = withPlan(week);
+      k.setBought('rolled-oats', 80, monday, now);
+      expect(buyNext(k, 'rolled-oats'), 80);
+      // And back to the usual package.
+      k.setBought('rolled-oats', 500, monday, now);
+      expect(k.state.packOverrides, isEmpty);
+    });
+
+    test('more of the usual packages changes nothing', () {
+      final k = withPlan(week);
+      k.setBought('milk', 3000, monday, now);
+      expect(k.state.packOverrides, isEmpty);
+      expect(buyNext(k, 'milk'), 1000);
+    });
+
+    test('loose produce bought by the net', () {
+      final k = withPlan('{"meals":[{"day":1,"name":"Chili","items":[{"name":"Zwiebel","amount":1}]}]}');
+      k.setBought('onion', 10, monday, now);
+      expect(k.purchaseUnit('onion'), 10);
+      k.uncheck('onion', now);
+      final onion = k.shoppingList(monday).open.single;
+      expect(onion.needLabel, '1 Stück', reason: 'the list still shows what is missing');
+      expect(onion.buy, 10);
+    });
+
+    test('nothing to learn from buying less than needed', () {
+      final k = withPlan(week);
+      k.setBought('egg', 4, monday, now);
+      expect(k.state.packOverrides, isEmpty);
+      expect(k.pantry('egg'), 4);
+      expect(k.shoppingList(monday).checked.single.missing, 4);
+    });
+  });
+
+  test('items covered by the pantry are listed separately', () {
     final k = withPlan(week);
-    k.check('egg', monday, now, amount: 6);
-    k.rememberPack('egg', 6);
-    expect(k.pantry('egg'), 6);
-    k.uncheck('egg', now);
-    expect(k.shoppingList(monday).open.firstWhere((i) => i.key == 'egg').buy, 12);
+    k.setPantry('egg', 10);
+    final list = k.shoppingList(monday);
+    expect(list.open.any((i) => i.key == 'egg'), isFalse);
+    final eggs = list.covered.single;
+    expect(eggs.key, 'egg');
+    expect(eggs.usedIn, ['Rührei']);
+    final scramble = k.state.meals.firstWhere((m) => m.name == 'Rührei');
+    expect(list.forMeal(scramble).covered.map((i) => i.key), ['egg']);
   });
 
   test('moving meals changes what has to be bought now', () {

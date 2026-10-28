@@ -6,9 +6,9 @@ import '../core/units.dart';
 import '../logic/kaufi.dart';
 import 'app.dart';
 
-/// Long press on a row: "I take more" or "the package here is different".
-/// Loose items get a single amount; for packaged items the package size is
-/// remembered for the next trip.
+/// Long press on a row, or a tap in the check at the end of a trip: "I took
+/// something else". Kaufi learns from the answer how the item is bought, so
+/// the next guess fits.
 Future<void> showAmountSheet(BuildContext context, ShoppingItem item) {
   return showModalBottomSheet<void>(
     context: context,
@@ -28,36 +28,49 @@ class _AmountSheet extends StatefulWidget {
 }
 
 class _AmountSheetState extends State<_AmountSheet> {
-  /// Package size, or the whole amount for loose items.
-  late double _size;
-  late int _count;
+  late double _amount;
 
   @override
   void initState() {
     super.initState();
-    final item = widget.item;
-    final pack = item.pack;
-    if (!item.exact) {
-      _size = pack!;
-      _count = math.max(1, (item.buy / pack - 1e-6).ceil());
-    } else {
-      _size = item.buy > 0 ? item.buy : _sizeStep(0);
-      _count = 1;
-    }
+    _amount = widget.item.buy > 0 ? widget.item.buy : _step(0);
   }
 
-  double _sizeStep(double size) {
+  double _step(double amount) {
     if (widget.item.def.unit == Dim.count) return 1;
-    if (size < 100) return 10;
-    if (size < 1000) return 50;
+    if (amount < 100) return 10;
+    if (amount < 1000) return 50;
     return 250;
   }
 
-  void _changeSize(int dir) {
+  void _change(int dir) {
     setState(() {
-      final step = _sizeStep(dir < 0 ? _size - 1 : _size);
-      _size = math.max(step, ((_size + dir * step) / step).round() * step);
+      final step = _step(dir < 0 ? _amount - 1 : _amount);
+      _amount = math.max(step, ((_amount + dir * step) / step).round() * step);
     });
+  }
+
+  /// Quick picks: exactly what was missing, and one or two packages.
+  List<(String, double)> _options(double missing) {
+    final item = widget.item;
+    final def = item.def;
+    final out = <(String, double)>[];
+    void add(String label, double amount) {
+      if (amount > 0 && !out.any((o) => (o.$2 - amount).abs() < 0.01)) out.add((label, amount));
+    }
+
+    if (missing > 0) add('Was fehlt · ${def.format(roundUpToWhole(missing))}', roundUpToWhole(missing));
+    final pack = item.pack ?? def.pack;
+    if (pack != null && pack > 0) {
+      final first = math.max(1, (missing / pack - 1e-6).ceil());
+      for (final n in item.exact ? [first] : [first, first + 1]) {
+        final label = def.packLabel != null && (pack - (def.pack ?? -1)).abs() < 1e-6
+            ? formatBought(def, pack, n * pack)
+            : '$n ${n == 1 ? 'Packung' : 'Packungen'} · ${def.format(n * pack)}';
+        add(label, n * pack);
+      }
+    }
+    return out;
   }
 
   @override
@@ -67,11 +80,8 @@ class _AmountSheetState extends State<_AmountSheet> {
     final def = item.def;
     final theme = Theme.of(context);
     final home = item.checked ? item.atHome - item.buy : item.atHome;
-    // "1 Knolle" reads better than "10 Zehen" when it is the usual package.
-    final packLabel = def.packLabel;
-    final total = !item.exact && packLabel != null && (_size - (def.pack ?? 0)).abs() < 1e-6
-        ? '$_count ${_count == 1 ? packLabel.$1 : packLabel.$2}'
-        : def.format(_size * _count);
+    final missing = math.max(0.0, item.need - home);
+    final options = _options(missing);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
@@ -88,34 +98,38 @@ class _AmountSheetState extends State<_AmountSheet> {
               ].join(' · '),
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 20),
-            _Stepper(
-              label: item.exact ? 'Menge' : 'Packungsgröße',
-              value: def.format(_size),
-              onMinus: _size > _sizeStep(_size - 1) ? () => _changeSize(-1) : null,
-              onPlus: () => _changeSize(1),
+            const SizedBox(height: 16),
+            Text('Wie viel nimmst du?', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (label, amount) in options)
+                  ChoiceChip(
+                    label: Text(label),
+                    selected: (amount - _amount).abs() < 0.01,
+                    onSelected: (_) => setState(() => _amount = amount),
+                  ),
+              ],
             ),
-            if (!item.exact) ...[
-              const SizedBox(height: 12),
-              _Stepper(
-                label: 'Anzahl',
-                value: '$_count',
-                onMinus: _count > 1 ? () => setState(() => _count--) : null,
-                onPlus: () => setState(() => _count++),
-              ),
-            ],
+            const SizedBox(height: 16),
+            _Stepper(
+              label: 'Andere Menge',
+              value: def.format(_amount),
+              onMinus: _amount > _step(_amount - 1) ? () => _change(-1) : null,
+              onPlus: () => _change(1),
+            ),
             const SizedBox(height: 20),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
               onPressed: () {
-                if (item.exact) {
-                  c.buyAmount(item.key, _size);
-                } else {
-                  c.buyPacks(item.key, _size, _count);
-                }
+                c.setBought(item.key, _amount);
                 Navigator.pop(context);
               },
-              child: Text('$total in den Korb'),
+              child: Text(item.checked
+                  ? 'Ich habe ${formatBought(def, item.pack ?? def.pack, _amount)}'
+                  : '${formatBought(def, item.pack ?? def.pack, _amount)} in den Korb'),
             ),
           ],
         ),

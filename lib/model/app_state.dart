@@ -113,7 +113,8 @@ class AppState {
   /// What is at home right now, per ingredient, in base units.
   final Map<String, double> pantry;
 
-  /// Package sizes the user corrected while shopping.
+  /// How the user buys an ingredient, learned from their corrections: the
+  /// size of one package, or 0 for exactly what is missing.
   final Map<String, double> packOverrides;
 
   /// Learned order of ingredients through the store.
